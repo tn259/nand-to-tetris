@@ -1,0 +1,54 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/03/a/PC.hdl
+
+/**
+ * A 16-bit counter with load and reset control bits.
+ * if      (reset[t] == 1) out[t+1] = 0
+ * else if (load[t] == 1)  out[t+1] = in[t]
+ * else if (inc[t] == 1)   out[t+1] = out[t] + 1  (integer addition)
+ * else                    out[t+1] = out[t]
+ */
+
+CHIP PC {
+    IN in[16],load,inc,reset;
+    OUT out[16];
+
+    PARTS:
+    // Put your code here:
+    DMux8Way(in=in[0], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da0, b=db0, c=dc0, d=dd0, e=de0, f=df0, g=dg0, h=dh0);
+    DMux8Way(in=in[1], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da1, b=db1, c=dc1, d=dd1, e=de1, f=df1, g=dg1, h=dh1);
+    DMux8Way(in=in[2], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da2, b=db2, c=dc2, d=dd2, e=de2, f=df2, g=dg2, h=dh2);
+    DMux8Way(in=in[3], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da3, b=db3, c=dc3, d=dd3, e=de3, f=df3, g=dg3, h=dh3);
+    DMux8Way(in=in[4], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da4, b=db4, c=dc4, d=dd4, e=de4, f=df4, g=dg4, h=dh4);
+    DMux8Way(in=in[5], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da5, b=db5, c=dc5, d=dd5, e=de5, f=df5, g=dg5, h=dh5);
+    DMux8Way(in=in[6], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da6, b=db6, c=dc6, d=dd6, e=de6, f=df6, g=dg6, h=dh6);
+    DMux8Way(in=in[7], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da7, b=db7, c=dc7, d=dd7, e=de7, f=df7, g=dg7, h=dh7);
+    DMux8Way(in=in[8], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da8, b=db8, c=dc8, d=dd8, e=de8, f=df8, g=dg8, h=dh8);
+    DMux8Way(in=in[9], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da9, b=db9, c=dc9, d=dd9, e=de9, f=df9, g=dg9, h=dh9);
+    DMux8Way(in=in[10], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da10, b=db10, c=dc10, d=dd10, e=de10, f=df10, g=dg10, h=dh10);
+    DMux8Way(in=in[11], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da11, b=db11, c=dc11, d=dd11, e=de11, f=df11, g=dg11, h=dh11);
+    DMux8Way(in=in[12], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da12, b=db12, c=dc12, d=dd12, e=de12, f=df12, g=dg12, h=dh12);
+    DMux8Way(in=in[13], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da13, b=db13, c=dc13, d=dd13, e=de13, f=df13, g=dg13, h=dh13);
+    DMux8Way(in=in[14], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da14, b=db14, c=dc14, d=dd14, e=de14, f=df14, g=dg14, h=dh14);
+    DMux8Way(in=in[15], sel[2]=reset, sel[1]=load, sel[0]=inc, a=da15, b=db15, c=dc15, d=dd15, e=de15, f=df15, g=dg15, h=dh15);
+
+    Mux16(a=false, b=outIncIn, sel=inc, out=mux16Out);
+
+    Inc16(in=mux16Out, out=incOut);
+
+    Or16(a[0]=dc0, a[1]=dc1, a[2]=dc2, a[3]=dc3, a[4]=dc4, a[5]=dc5, a[6]=dc6, a[7]=dc7, a[8]=dc8, a[9]=dc9, a[10]=dc10, a[11]=dc11, a[12]=dc12, a[13]=dc13, a[14]=dc14, a[15]=dc15, b[0]=dd0, b[1]=dd1, b[2]=dd2, b[3]=dd3, b[4]=dd4, b[5]=dd5, b[6]=dd6, b[7]=dd7, b[8]=dd8, b[9]=dd9, b[10]=dd10, b[11]=dd11, b[12]=dd12, b[13]=dd13, b[14]=dd14, b[15]=dd15, out=loadOr);
+
+    Or16(a[0]=de0, a[1]=de1, a[2]=de2, a[3]=de3, a[4]=de4, a[5]=de5, a[6]=de6, a[7]=de7, a[8]=de8, a[9]=de9, a[10]=de10, a[11]=de11, a[12]=de12, a[13]=de13, a[14]=de14, a[15]=de15, b[0]=df0, b[1]=df1, b[2]=df2, b[3]=df3, b[4]=df4, b[5]=df5, b[6]=df6, b[7]=df7, b[8]=df8, b[9]=df9, b[10]=df10, b[11]=df11, b[12]=df12, b[13]=df13, b[14]=df14, b[15]=df15, out=resetOr1);
+    Or16(a[0]=dg0, a[1]=dg1, a[2]=dg2, a[3]=dg3, a[4]=dg4, a[5]=dg5, a[6]=dg6, a[7]=dg7, a[8]=dg8, a[9]=dg9, a[10]=dg10, a[11]=dg11, a[12]=dg12, a[13]=dg13, a[14]=dg14, a[15]=dg15, b[0]=dh0, b[1]=dh1, b[2]=dh2, b[3]=dh3, b[4]=dh4, b[5]=dh5, b[6]=dh6, b[7]=dh7, b[8]=dh8, b[9]=dh9, b[10]=dh10, b[11]=dh11, b[12]=dh12, b[13]=dh13, b[14]=dh14, b[15]=dh15, out=resetOr2);
+    Or16(a=resetOr1, b=resetOr2, out=resetOr);
+    And16(a=resetOr, b=false, out=resetAndOut);
+
+    Mux8Way16(a[0]=da0, a[1]=da1, a[2]=da2, a[3]=da3, a[4]=da4, a[5]=da5, a[6]=da6, a[7]=da7, a[8]=da8, a[9]=da9, a[10]=da10, a[11]=da11, a[12]=da12, a[13]=da13, a[14]=da14, a[15]=da15, b=incOut, c=loadOr, d=loadOr, e=resetAndOut, f=resetAndOut, g=resetAndOut, h=resetAndOut, sel[2]=reset, sel[1]=load, sel[0]=inc, out=muxOut);
+
+
+    Or(a=reset, b=load, out=controlOr1);
+    Or(a=controlOr1, b=inc, out=controlOrOut);
+    Register(in=muxOut, load=controlOrOut, out=outIncIn, out=out);
+}
