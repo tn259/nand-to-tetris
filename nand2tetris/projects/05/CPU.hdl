@@ -1,0 +1,89 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/05/CPU.hdl
+
+/**
+ * The Hack CPU (Central Processing unit), consisting of an ALU,
+ * two registers named A and D, and a program counter named PC.
+ * The CPU is designed to fetch and execute instructions written in 
+ * the Hack machine language. In particular, functions as follows:
+ * Executes the inputted instruction according to the Hack machine 
+ * language specification. The D and A in the language specification
+ * refer to CPU-resident registers, while M refers to the external
+ * memory location addressed by A, i.e. to Memory[A]. The inM input 
+ * holds the value of this location. If the current instruction needs 
+ * to write a value to M, the value is placed in outM, the address 
+ * of the target location is placed in the addressM output, and the 
+ * writeM control bit is asserted. (When writeM==0, any value may 
+ * appear in outM). The outM and writeM outputs are combinational: 
+ * they are affected instantaneously by the execution of the current 
+ * instruction. The addressM and pc outputs are clocked: although they 
+ * are affected by the execution of the current instruction, they commit 
+ * to their new values only in the next time step. If reset==1 then the 
+ * CPU jumps to address 0 (i.e. pc is set to 0 in next time step) rather 
+ * than to the address resulting from executing the current instruction. 
+ */
+
+CHIP CPU {
+
+    IN  inM[16],         // M value input  (M = contents of RAM[A])
+        instruction[16], // Instruction for execution
+        reset;           // Signals whether to re-start the current
+                         // program (reset==1) or continue executing
+                         // the current program (reset==0).
+
+    OUT outM[16],        // M value output
+        writeM,          // Write to M? 
+        addressM[15],    // Address in data memory (of M)
+        pc[15];          // address of next instruction
+
+    // ixxaccccccdddjjj
+    // 0123456789ABCDEF
+    // FEDCBA9876543210
+
+    PARTS:
+    // Put your code here:
+    // Mux16(a, b, sel, out)
+    // ALU(x, y, zx, nx, zy, ny, f, no, out, zr, ng)
+    // Register(in, load, out)
+
+    // Instuction Mux
+    Mux16(a=instruction, b=ALUoutput, sel=instruction[15], out=muxInstrOut);
+
+    // Calculate load of A register = Not(i) Or i AND d1
+    Not(in=instruction[15], out=notOutAregL);
+    And(a=instruction[15], b=instruction[5], out=andOutAregL);
+    Or(a=notOutAregL, b=andOutAregL, out=registerALoad);
+    // A register
+    ARegister(in=muxInstrOut, load=registerALoad, out=registerAOutput, out=PCinput, out[0]=addressM[0], out[1]=addressM[1], out[2]=addressM[2], out[3]=addressM[3], out[4]=addressM[4], out[5]=addressM[5], out[6]=addressM[6], out[7]=addressM[7], out[8]=addressM[8], out[9]=addressM[9], out[10]=addressM[10], out[11]=addressM[11], out[12]=addressM[12], out[13]=addressM[13], out[14]=addressM[14]);
+ 
+    // A register inM Mux
+    // inM mux load = i AND a
+    And(a=instruction[15], b=instruction[12], out=inMMuxSel);
+    Mux16(a=registerAOutput, b=inM, sel=inMMuxSel, out=yALUinput);
+
+    // D register load = i AND d2 
+    And(a=instruction[15], b=instruction[4], out=DRegisterLoad);
+    DRegister(in=ALUoutput, load=DRegisterLoad, out=xALUinput);
+
+    // ALU
+    And(a=instruction[11], b=instruction[15], out=Zx);
+    And(a=instruction[10], b=instruction[15], out=Nx);
+    And(a=instruction[9], b=instruction[15], out=Zy);
+    And(a=instruction[8], b=instruction[15], out=Ny);
+    And(a=instruction[7], b=instruction[15], out=F);
+    And(a=instruction[6], b=instruction[15], out=No);
+    ALU(x=xALUinput, y=yALUinput, zx=Zx, nx=Nx, zy=Zy, ny=Ny, f=F, no=No, out=ALUoutput, out=outM, zr=Zr, ng=Ng);
+
+    // PC - always inc unless load
+    Mux(a=instruction[0], b=instruction[1], sel=Zr, out=j2j3Muxout);
+    Mux(a=instruction[2], b=instruction[1], sel=Zr, out=j2j1Muxout);
+    Mux(a=j2j3Muxout, b=j2j1Muxout, sel=Ng, out=PCLoadWhenCInstr);
+    Mux(a=false, b=PCLoadWhenCInstr, sel=instruction[15], out=PCLoad); // only when it is a C Instr
+
+    PC(in=PCinput, reset=reset, inc=true, load=PCLoad, out[0]=pc[0], out[1]=pc[1], out[2]=pc[2], out[3]=pc[3], out[4]=pc[4], out[5]=pc[5], out[6]=pc[6], out[7]=pc[7], out[8]=pc[8], out[9]=pc[9], out[10]=pc[10], out[11]=pc[11], out[12]=pc[12], out[13]=pc[13], out[14]=pc[14]);
+
+    // WriteM = d3 AND i
+    And(a=instruction[3], b=instruction[15], out=writeM); 
+}
