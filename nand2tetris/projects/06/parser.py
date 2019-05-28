@@ -15,7 +15,11 @@ class Parser:
     while True:
       self.currentLine = self.fileHandle.readline()
       if not (self.currentLine == "\r\n" or self.currentLine.startswith("//")): # Skip newlines and comments
-        self.currentLine = self.currentLine[:-2] # Strip off \r\n
+        commentPos = self.currentLine.find("//")
+        if commentPos == -1:
+          self.currentLine = self.currentLine[:-2].strip(' ') # Strip off \r\n and whitespace
+        else:
+          self.currentLine = self.currentLine[:commentPos].strip(' ') # Strip off end comment and whitespace
         break
 
   
