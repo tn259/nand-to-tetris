@@ -59,6 +59,6 @@ class Parser:
   def arg2(self):
     commandType = self.commandType()
     if commandType == command_types.C_PUSH or commandType == command_types.C_POP or commandType == command_types.C_FUNCTION or commandType == command_types.C_CALL:
-      return self.currentLine.split(' ')[2]
+      return int(self.currentLine.split(' ')[2])
     else:
       return None
