@@ -11,24 +11,28 @@ def main(arg):
   if arg.endswith(".vm"):
     vmFilename = arg
     asmFilename = os.path.splitext(vmFilename)[0]+".asm"
-    vm = VMTranslator()
-    vm.run(vmFilename, asmFilename)
+    vm = VMTranslator(asmFilename)
+    vm.run(vmFilename)
   else:
     # Directory of .vm files
     directory = arg
     vmFilenames = glob.glob(directory + "/*.vm")
     asmFilename = directory + "/" + directory[directory.rfind('/')+1:] + ".asm"
+    vm = VMTranslator(asmFilename, True)
     for vmFilename in vmFilenames:
-      print vmFilename
-      vm = VMTranslator()
-      vm.run(vmFilename, asmFilename)
+      vm.run(vmFilename)
 
 class VMTranslator:
 
-  def run(self, vmFilename, asmFilename):
+  def __init__(self, asmFilename, writeInit=False):
+    self.cw = code_writer.CodeWriter(asmFilename)
+    if writeInit:
+      self.cw.WriteInit()
+    
+
+  def run(self, vmFilename):
 
     p = parser.Parser(vmFilename)
-    cw = code_writer.CodeWriter(asmFilename)
 
     p.advance()
     while p.hasMoreCommands():
@@ -36,21 +40,21 @@ class VMTranslator:
       commandType = p.commandType()
 
       if commandType == command_types.C_PUSH or commandType == command_types.C_POP:
-        cw.WritePushPop(commandType, p.arg1(), p.arg2())
+        self.cw.WritePushPop(commandType, p.arg1(), p.arg2())
       elif commandType == command_types.C_ARITHMETIC:
-        cw.WriteArithmetic(p.arg1())
+        self.cw.WriteArithmetic(p.arg1())
       elif commandType == command_types.C_LABEL:
-        cw.WriteLabel(p.arg1())
+        self.cw.WriteLabel(p.arg1())
       elif commandType == command_types.C_GOTO:
-        cw.WriteGoto(p.arg1())
+        self.cw.WriteGoto(p.arg1())
       elif commandType == command_types.C_IF:
-        cw.WriteIf(p.arg1())
+        self.cw.WriteIf(p.arg1())
       elif commandType == command_types.C_FUNCTION:
-        cw.WriteFunction(p.arg1(), p.arg2())
+        self.cw.WriteFunction(p.arg1(), p.arg2())
       elif commandType == command_types.C_RETURN:
-        cw.WriteReturn()
+        self.cw.WriteReturn()
       elif commandType == command_types.C_CALL:
-        cw.WriteCall(p.arg1(), p.arg2())
+        self.cw.WriteCall(p.arg1(), p.arg2())
       else:
         # Unimplemented
         pass
