@@ -10,7 +10,11 @@ class CodeWriter:
       "argument": 2,
       "this": 3,
       "that": 4,
-      "temp": 5
+      "temp": 5,
+      "R13": 13,
+      "R14":14,
+      "R15":15,
+      "R16": 16
     }
     self.binaryArithmeticCommands = [
       "add",
@@ -55,8 +59,8 @@ class CodeWriter:
 
   def WriteIf(self, label):
     self.writeASMCommandToFile("// if-goto "+str(label))
-    self.WritePushPop(command_types.C_POP, "temp", 0) # write cond onto temp
-    self.writeASMCommandToFile("@"+str(self.segmentTable["temp"]))
+    self.WritePushPop(command_types.C_POP, "R15", 0) # write cond onto temp
+    self.writeASMCommandToFile("@"+str(self.segmentTable["R15"]))
     self.writeASMCommandToFile("D=M") # save cond into D
     self.writeASMCommandToFile("@"+self.completeLabel(self.currentFunction, label))
     self.writeASMCommandToFile("D;JNE") # if true i.e. if not false
@@ -69,31 +73,31 @@ class CodeWriter:
     for i in range(numVars):
       self.WritePushPop(command_types.C_PUSH, "constant", 0)
 
+  def writePush(self, segment):
+    self.writeASMCommandToFile("@"+str(self.segmentTable[segment]))
+    self.writeASMCommandToFile("D=M") # save cond into D
+    self.writeASMCommandToFile("@SP")
+    self.writeASMCommandToFile("A=M")
+    self.writeASMCommandToFile("M=D")
+    self.writeASMCommandToFile("@SP")
+    self.writeASMCommandToFile("M=M+1")
+    
   def WriteCall(self, functionName, numArgs):
     self.writeASMCommandToFile("// call "+str(functionName)+" "+str(numArgs))
 
     returnLabel = "RET."+str(self.callCount)
     self.WritePushPop(command_types.C_PUSH, self.completeLabel(self.currentFunction, returnLabel), 0)
-    self.WritePushPop(command_types.C_PUSH, "local", 0)
-    self.WritePushPop(command_types.C_PUSH, "argument", 0)
-    self.WritePushPop(command_types.C_PUSH, "this", 0)
-    self.WritePushPop(command_types.C_PUSH, "that", 0)
+    self.writePush("local")
+    self.writePush("argument")
+    self.writePush("this")
+    self.writePush("that")
     
     # ARG=SP-5-nArgs
-    self.writeASMCommandToFile("@SP") # Save SP to temp
+    self.writeASMCommandToFile("@SP")
     self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["temp"]))
-    self.writeASMCommandToFile("M=D")
-    self.writeASMCommandToFile("@5") # Save 5 to D
-    self.writeASMCommandToFile("D=A")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["temp"])) # SP - 5
-    self.writeASMCommandToFile("M=M-D")
-    self.writeASMCommandToFile("@"+str(numArgs)) # Save numArgs to D
-    self.writeASMCommandToFile("D=A")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["temp"])) # (SP - 5) - numArgs
-    self.writeASMCommandToFile("M=M-D")
-    self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["argument"])) # ARG = (SP - 5) - numArgs
+    self.writeASMCommandToFile("@"+str(5+numArgs))
+    self.writeASMCommandToFile("D=D-A")
+    self.writeASMCommandToFile("@"+str(self.segmentTable["argument"]))
     self.writeASMCommandToFile("M=D")
 
     # LCL = SP
@@ -106,7 +110,17 @@ class CodeWriter:
     self.WriteLabel(returnLabel)
 
     self.callCount += 1
-    
+   
+  def writeFrameOffset(self, pointer, frame, offset):
+    self.writeASMCommandToFile("@"+frame)
+    self.writeASMCommandToFile("D=M")
+    self.writeASMCommandToFile("@"+offset)
+    self.writeASMCommandToFile("D=D-A")
+    self.writeASMCommandToFile("A=D")
+    self.writeASMCommandToFile("D=M")
+    self.writeASMCommandToFile("@"+pointer)
+    self.writeASMCommandToFile("M=D")
+     
 
   def WriteReturn(self):
     self.writeASMCommandToFile("// return")
@@ -120,19 +134,8 @@ class CodeWriter:
     self.writeASMCommandToFile("@"+endFrame)
     self.writeASMCommandToFile("M=D")
 
-    # retAddr = *(endFrame - 5) 
-    self.writeASMCommandToFile("@"+endFrame)
-    self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@"+retAddr)
-    self.writeASMCommandToFile("M=D")
-    self.writeASMCommandToFile("@5")
-    self.writeASMCommandToFile("D=A")
-    self.writeASMCommandToFile("@"+retAddr)
-    self.writeASMCommandToFile("M=M-D")
-    self.writeASMCommandToFile("A=M")
-    self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@"+retAddr)
-    self.writeASMCommandToFile("M=D")
+    # retAddr = *(endFrame - 5)
+    self.writeFrameOffset(retAddr, endFrame, str(5)) 
 
     # *ARG = pop()
     self.WritePushPop(command_types.C_POP, "argument", 0)
@@ -140,66 +143,20 @@ class CodeWriter:
     # SP = ARG+1
     self.writeASMCommandToFile("@"+str(self.segmentTable["argument"]))
     self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@1")
-    self.writeASMCommandToFile("D=D+A")
     self.writeASMCommandToFile("@SP")
-    self.writeASMCommandToFile("M=D")
+    self.writeASMCommandToFile("M=D+1")
 
     # THAT = *(endFrame-1)
-    self.writeASMCommandToFile("@"+endFrame)
-    self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["that"]))
-    self.writeASMCommandToFile("M=D")
-    self.writeASMCommandToFile("@1")
-    self.writeASMCommandToFile("D=A")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["that"]))
-    self.writeASMCommandToFile("M=M-D")
-    self.writeASMCommandToFile("A=M")
-    self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["that"]))
-    self.writeASMCommandToFile("M=D")
+    self.writeFrameOffset(str(self.segmentTable["that"]), endFrame, str(1)) 
     
     # THIS = *(endFrame-2)
-    self.writeASMCommandToFile("@"+endFrame)
-    self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["this"]))
-    self.writeASMCommandToFile("M=D")
-    self.writeASMCommandToFile("@2")
-    self.writeASMCommandToFile("D=A")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["this"]))
-    self.writeASMCommandToFile("M=M-D")
-    self.writeASMCommandToFile("A=M")
-    self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["this"]))
-    self.writeASMCommandToFile("M=D")
+    self.writeFrameOffset(str(self.segmentTable["this"]), endFrame, str(2)) 
 
     # ARG = *(endFrame-3)
-    self.writeASMCommandToFile("@"+endFrame)
-    self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["argument"]))
-    self.writeASMCommandToFile("M=D")
-    self.writeASMCommandToFile("@3")
-    self.writeASMCommandToFile("D=A")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["argument"]))
-    self.writeASMCommandToFile("M=M-D")
-    self.writeASMCommandToFile("A=M")
-    self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["argument"]))
-    self.writeASMCommandToFile("M=D")
+    self.writeFrameOffset(str(self.segmentTable["argument"]), endFrame, str(3)) 
 
     # LCL = *(endFrame-4)
-    self.writeASMCommandToFile("@"+endFrame)
-    self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["local"]))
-    self.writeASMCommandToFile("M=D")
-    self.writeASMCommandToFile("@4")
-    self.writeASMCommandToFile("D=A")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["local"]))
-    self.writeASMCommandToFile("M=M-D")
-    self.writeASMCommandToFile("A=M")
-    self.writeASMCommandToFile("D=M")
-    self.writeASMCommandToFile("@"+str(self.segmentTable["local"]))
-    self.writeASMCommandToFile("M=D")
+    self.writeFrameOffset(str(self.segmentTable["local"]), endFrame, str(4)) 
 
     # goto retAddr
     self.writeASMCommandToFile("@"+retAddr)
@@ -237,7 +194,7 @@ class CodeWriter:
     addr = ''  
 
     # calculate addr based on segment
-    if segment == "local" or segment == "argument" or segment == "this" or segment == "that":
+    if segment == "local" or segment == "argument" or segment == "this" or segment == "that" or segment in ["R13", "R14", "R15"]:
       addr = str(self.segmentTable[segment])
     elif segment == "temp":
       #pdb.set_trace()
@@ -268,7 +225,7 @@ class CodeWriter:
     if command == command_types.C_PUSH:
       self.writeASMCommandToFile("// push "+segment+" "+str(index)) # D=addr
 
-      if segment == "temp" or segment == "constant" or segment == "static" or segment == "pointer" or "RET" in segment:
+      if segment == "temp" or segment == "constant" or segment == "static" or segment == "pointer" or "RET" in segment or segment in ["R13", "R14", "R15"]:
         self.writeASMCommandToFile("@"+addr)
       else:
         self.writeASMCommandToFile("@"+str(index))
@@ -294,22 +251,22 @@ class CodeWriter:
       self.writeASMCommandToFile("A=M")
       self.writeASMCommandToFile("D=M")
 
-      if segment == "temp" or segment == "static" or segment == "pointer":
+      if segment == "temp" or segment == "static" or segment == "pointer" or segment in ["R13", "R14", "R15"]:
         self.writeASMCommandToFile("@"+addr)
         self.writeASMCommandToFile("M=D")
       else:
-        self.writeASMCommandToFile("@"+str(self.segmentTable["temp"])) # save D to temp 
+        self.writeASMCommandToFile("@"+str(self.segmentTable["R15"])) # save D to temp 
         self.writeASMCommandToFile("M=D")
         self.writeASMCommandToFile("@"+str(index))
         self.writeASMCommandToFile("D=A") # save base address in D
         self.writeASMCommandToFile("@"+addr)
         self.writeASMCommandToFile("A=M+D") # address base + index
         self.writeASMCommandToFile("D=A") # save final address
-        self.writeASMCommandToFile("@"+str(self.segmentTable["temp"]+1)) # save D to temp 
+        self.writeASMCommandToFile("@"+str(self.segmentTable["R16"])) # save D to temp 
         self.writeASMCommandToFile("M=D")
-        self.writeASMCommandToFile("@"+str(self.segmentTable["temp"])) # get origianl SP value back out
+        self.writeASMCommandToFile("@"+str(self.segmentTable["R15"])) # get origianl SP value back out
         self.writeASMCommandToFile("D=M")
-        self.writeASMCommandToFile("@"+str(self.segmentTable["temp"]+1)) # go back to final address
+        self.writeASMCommandToFile("@"+str(self.segmentTable["R16"])) # go back to final address
         self.writeASMCommandToFile("A=M")
         self.writeASMCommandToFile("M=D") # save SP value in final address
 
@@ -322,7 +279,7 @@ class CodeWriter:
       #       |x|
       #       |y|
       # SP -> | |
-      self.WritePushPop(command_types.C_POP, "temp", 0) # write y onto temp
+      self.WritePushPop(command_types.C_POP, "R15", 0) # write y onto temp
 
       #       |x|
       # SP -> | |
@@ -330,7 +287,7 @@ class CodeWriter:
       self.writeASMCommandToFile("M=M-1")
 
       # SP -> |x|
-      self.writeASMCommandToFile("@"+str(self.segmentTable["temp"]))
+      self.writeASMCommandToFile("@"+str(self.segmentTable["R15"]))
       self.writeASMCommandToFile("D=M") # D=y
       self.writeASMCommandToFile("@SP")
       self.writeASMCommandToFile("A=M")
