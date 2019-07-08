@@ -33,6 +33,7 @@ class VMTranslator:
   def run(self, vmFilename):
 
     p = parser.Parser(vmFilename)
+    self.cw.setStaticPrefix(vmFilename)
 
     p.advance()
     while p.hasMoreCommands():

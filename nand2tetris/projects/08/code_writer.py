@@ -14,7 +14,6 @@ class CodeWriter:
       "R13": 13,
       "R14":14,
       "R15":15,
-      "R16": 16
     }
     self.binaryArithmeticCommands = [
       "add",
@@ -28,9 +27,13 @@ class CodeWriter:
     self.eqCount = 1
     self.ltCount = 1
     self.gtCount = 1
-    self.filenamePrefix = os.path.splitext(os.path.basename(self.outputFilename))[0]
+    self.filenamePrefix = os.path.splitext(os.path.basename(self.outputFilename))[0] # use output as a backup
     self.currentFunction = ""
     self.callCount = 1
+    self.staticFilenamePrefix = ""
+
+  def setStaticPrefix(self, filename):
+    self.staticFilenamePrefix = os.path.splitext(os.path.basename(filename))[0]
 
   def completeLabel(self, functionName, label):
     completeLabel = self.filenamePrefix+"."+functionName
@@ -215,7 +218,7 @@ class CodeWriter:
         return None
     elif segment == "static":
       # addr = str(<filename without ext>.index)
-      addr = self.filenamePrefix + "." + str(index)
+      addr = self.staticFilenamePrefix + "." + str(index)
     elif "RET" in segment:
       addr = segment
     else:
@@ -255,18 +258,18 @@ class CodeWriter:
         self.writeASMCommandToFile("@"+addr)
         self.writeASMCommandToFile("M=D")
       else:
-        self.writeASMCommandToFile("@"+str(self.segmentTable["R15"])) # save D to temp 
+        self.writeASMCommandToFile("@"+str(self.segmentTable["temp"]+3)) # save D to temp 
         self.writeASMCommandToFile("M=D")
         self.writeASMCommandToFile("@"+str(index))
         self.writeASMCommandToFile("D=A") # save base address in D
         self.writeASMCommandToFile("@"+addr)
         self.writeASMCommandToFile("A=M+D") # address base + index
         self.writeASMCommandToFile("D=A") # save final address
-        self.writeASMCommandToFile("@"+str(self.segmentTable["R16"])) # save D to temp 
+        self.writeASMCommandToFile("@"+str(self.segmentTable["temp"]+4)) # save D to temp 
         self.writeASMCommandToFile("M=D")
-        self.writeASMCommandToFile("@"+str(self.segmentTable["R15"])) # get origianl SP value back out
+        self.writeASMCommandToFile("@"+str(self.segmentTable["temp"]+3)) # get origianl SP value back out
         self.writeASMCommandToFile("D=M")
-        self.writeASMCommandToFile("@"+str(self.segmentTable["R16"])) # go back to final address
+        self.writeASMCommandToFile("@"+str(self.segmentTable["temp"]+4)) # go back to final address
         self.writeASMCommandToFile("A=M")
         self.writeASMCommandToFile("M=D") # save SP value in final address
 
