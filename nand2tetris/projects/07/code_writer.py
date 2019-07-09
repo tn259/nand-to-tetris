@@ -1,10 +1,12 @@
 import command_types
 import os
 import pdb
+from os import system
 
 class CodeWriter:
   def __init__(self, filename):
     self.outputFilename = filename
+    self.asm_file = open(filename, 'w')
     self.segmentTable = {
       "local": 1,
       "argument": 2,
@@ -222,5 +224,7 @@ class CodeWriter:
     
 
   def writeASMCommandToFile(self, command):
-    with open(self.outputFilename, 'a') as outFile:
-      outFile.write(command+"\n")
+    self.asm_file.write(command+"\n")
+
+  def Close(self):
+    self.asm_file.close()
