@@ -14,10 +14,14 @@ class Parser:
   def advance(self):
     while True:
       self.currentLine = self.fileHandle.readline()
-      if not (self.currentLine == "\r\n" or self.currentLine.startswith("//")): # Skip newlines and comments
+      if not (self.currentLine == "\n" or self.currentLine == "\r\n" or self.currentLine.startswith("//")): # Skip newlines and comments
         commentPos = self.currentLine.find("//")
         if commentPos == -1:
-          self.currentLine = self.currentLine[:-2].strip(' ') # Strip off \r\n and whitespace
+          if self.currentLine.endswith("\r\n"):
+            endPos = -2
+          else:
+            endPos = -1
+          self.currentLine = self.currentLine[:endPos].strip(' ') # Strip off \r\n and whitespace
         else:
           self.currentLine = self.currentLine[:commentPos].strip(' ') # Strip off end comment and whitespace
         break

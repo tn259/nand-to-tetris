@@ -13,6 +13,7 @@ def main(arg):
     asmFilename = os.path.splitext(vmFilename)[0]+".asm"
     vm = VMTranslator(asmFilename)
     vm.run(vmFilename)
+    vm.close()
   else:
     # Directory of .vm files
     directory = arg
@@ -21,6 +22,7 @@ def main(arg):
     vm = VMTranslator(asmFilename, True)
     for vmFilename in vmFilenames:
       vm.run(vmFilename)
+    vm.close()
 
 class VMTranslator:
 
@@ -28,7 +30,9 @@ class VMTranslator:
     self.cw = code_writer.CodeWriter(asmFilename)
     if writeInit:
       self.cw.WriteInit()
-    
+
+  def close(self):
+    self.cw.Close()    
 
   def run(self, vmFilename):
 
