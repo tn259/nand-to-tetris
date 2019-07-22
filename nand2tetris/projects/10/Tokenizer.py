@@ -1,5 +1,6 @@
 from enum import Enum
 import re
+import pdb
 
 class TokenType(Enum):
   KEYWORD = 1
@@ -55,19 +56,13 @@ class Tokenizer:
       self.currentLine = self.inFileLines[self.currentLineIdx]
       self.currentTokenStartOffset = 0
 
-  def advance(self):
-    if not self.hasMoreTokens():
-      print("Tokenizer::advance has reached the end")
-      return
-
-    while self.currentLine.startswith("//") or self.currentLine.startswith("/**"): # Skip comments
-      self.nextLine()
-
+  def nextToken(self):
     # Process Line
     tokenEndOffset = self.currentTokenStartOffset + 1
     while tokenEndOffset < len(self.currentLine):
       s = self.currentLine[self.currentTokenStartOffset:tokenEndOffset]
       endChar = self.currentLine[tokenEndOffset]
+      pdb.set_trace()
       if len(s) == 1:
         if s in ["\t", "\r", " "]: # Skip over tabs, CR and spaces
           self.currentTokenStartOffset += 1
@@ -86,42 +81,56 @@ class Tokenizer:
           self.currentToken = s
           break
         else:
-          tokenEndOffset += 1  
-            
-    if tokenEndOffset >= len(self.currentLine): # got to the end of the line?
+          tokenEndOffset += 1
+
+
+  def advance(self):
+    if not self.hasMoreTokens():
+      print("Tokenizer::advance has reached the end")
+      return
+
+    while self.currentLine.startswith("//") or self.currentLine.startswith("/**") or self.currentLine == "\n" or self.currentLine == "\r\n": # Skip comments
       self.nextLine()
-    else:
+
+    self.nextToken()
+
+    tokenEndOffset = self.currentTokenStartOffset + len(self.currentToken)   
+        
+    if tokenEndOffset >= len(self.currentLine): # got to the end of the line? if so go back round to get first token of next line
+      self.nextLine()
+      self.nextToken()
+    else: # Not at new line
       self.currentTokenStartOffset = tokenEndOffset
         
     
   def tokenType(self):
     if self.currentToken.upper() in Keywords():
-      return KEYWORD
+      return TokenType.KEYWORD
     elif self.currentToken in Symbols():
-      return SYMBOL
+      return TokenType.SYMBOL
     elif re.match("[a-zA-Z_][\w]+", self.currentToken):
-      return IDENTIFIER
+      return TokenType.IDENTIFIER
     elif re.match('\d+', self.currentToken):
-      return INT_CONST
+      return TokenType.INT_CONST
     elif re.match("\"[^\"\n]*\"", self.currentToken):
-      return STRING_CONST
+      return TokenType.STRING_CONST
 
   def symbol(self):
-    if self.tokenType() == SYMBOL:
+    if self.tokenType() == TokenType.SYMBOL:
       return self.currentToken
 
   def keyword(self):
-    if self.tokenType() == KEYWORD:
+    if self.tokenType() == TokenType.KEYWORD:
       return self.currentToken
 
   def identifier(self):
-    if self.tokenType() == IDENTIFIER:
+    if self.tokenType() == TokenType.IDENTIFIER:
       return self.currentToken
 
   def intVal(self):
-    if self.tokenType() == INT_CONST:
+    if self.tokenType() == TokenType.INT_CONST:
       return self.currentToken
 
   def stringVal(self):
-    if self.tokenType() == STRING_CONST:
+    if self.tokenType() == TokenType.STRING_CONST:
       return self.currentToken[1:-1] # strip quotes
