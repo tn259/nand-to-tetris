@@ -62,16 +62,19 @@ class Tokenizer:
     while tokenEndOffset < len(self.currentLine):
       s = self.currentLine[self.currentTokenStartOffset:tokenEndOffset]
       endChar = self.currentLine[tokenEndOffset]
-      pdb.set_trace()
+      #pdb.set_trace()
       if len(s) == 1:
         if s in ["\t", "\r", " "]: # Skip over tabs, CR and spaces
           self.currentTokenStartOffset += 1
           tokenEndOffset += 1
         elif s == "\"": # string const find closing " and return update offsets one past this
-          nextQuotePos = self.currentLine[self.currentTokenStartOffset+1:].find("\"")
+          nextQuotePos = self.currentTokenStartOffset + self.currentLine[self.currentTokenStartOffset+1:].find("\"")
           self.currentToken = self.currentLine[self.currentTokenStartOffset:nextQuotePos+1]
           break
         elif s in Symbols(): # Symbol
+          self.currentToken = s
+          break
+        elif endChar == " " or endChar in Symbols():
           self.currentToken = s
           break
         else:
@@ -83,24 +86,28 @@ class Tokenizer:
         else:
           tokenEndOffset += 1
 
+  def skipCommentsEmptyLines(self):
+    while self.currentLine.startswith("//") or self.currentLine.startswith("/**") or self.currentLine == "\n" or self.currentLine == "\r\n": # Skip comments
+      self.nextLine()
 
   def advance(self):
     if not self.hasMoreTokens():
       print("Tokenizer::advance has reached the end")
       return
 
-    while self.currentLine.startswith("//") or self.currentLine.startswith("/**") or self.currentLine == "\n" or self.currentLine == "\r\n": # Skip comments
-      self.nextLine()
+    self.skipCommentsEmptyLines()
 
     self.nextToken()
 
     tokenEndOffset = self.currentTokenStartOffset + len(self.currentToken)   
         
     if tokenEndOffset >= len(self.currentLine): # got to the end of the line? if so go back round to get first token of next line
+      self.skipCommentsEmptyLines()
       self.nextLine()
       self.nextToken()
-    else: # Not at new line
-      self.currentTokenStartOffset = tokenEndOffset
+      tokenEndOffset = self.currentTokenStartOffset + len(self.currentToken)   
+    
+    self.currentTokenStartOffset = tokenEndOffset
         
     
   def tokenType(self):
