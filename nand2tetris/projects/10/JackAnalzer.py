@@ -21,7 +21,6 @@ def tokenize(jackFile):
   t = Tokenizer.Tokenizer(jackFile)
   while t.hasMoreTokens():
     t.advance()
-    pdb.set_trace()
     tokenType = t.tokenType()
     if tokenType == Tokenizer.TokenType.KEYWORD:
       outputFile.write(t.keyword())  
@@ -33,6 +32,9 @@ def tokenize(jackFile):
       outputFile.write(t.intVal())  
     elif tokenType == Tokenizer.TokenType.STRING_CONST:
       outputFile.write(t.stringVal())
+    else:
+      pdb.set_trace()
+      print("Invalid")
     outputFile.write("\n")
   outputFile.close()
 

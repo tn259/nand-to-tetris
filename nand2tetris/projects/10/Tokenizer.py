@@ -69,11 +69,15 @@ class Tokenizer:
           tokenEndOffset += 1
         elif s == "\"": # string const find closing " and return update offsets one past this
           nextQuotePos = self.currentTokenStartOffset + self.currentLine[self.currentTokenStartOffset+1:].find("\"")
-          self.currentToken = self.currentLine[self.currentTokenStartOffset:nextQuotePos+1]
+          self.currentToken = self.currentLine[self.currentTokenStartOffset:nextQuotePos+2]
           break
         elif s in Symbols(): # Symbol
-          self.currentToken = s
-          break
+          if s == "/" and endChar == "/": # comment not at start of line
+            self.nextLine()
+            tokenEndOffset = self.currentTokenStartOffset + 1
+          else:
+            self.currentToken = s
+            break
         elif endChar == " " or endChar in Symbols():
           self.currentToken = s
           break
@@ -87,12 +91,12 @@ class Tokenizer:
           tokenEndOffset += 1
 
   def skipCommentsEmptyLines(self):
-    while self.currentLine.startswith("//") or self.currentLine.startswith("/**") or self.currentLine == "\n" or self.currentLine == "\r\n": # Skip comments
+    while self.currentLine.startswith("//") or self.currentLine.startswith("/**") or self.currentLine in ["\n", "\r\n", "\t\n", "\t\r\n"]: # Skip comments
       self.nextLine()
 
   def advance(self):
     if not self.hasMoreTokens():
-      print("Tokenizer::advance has reached the end")
+      print("Tokenizer::advance: Tokenizer has reached the end")
       return
 
     self.skipCommentsEmptyLines()
@@ -102,8 +106,8 @@ class Tokenizer:
     tokenEndOffset = self.currentTokenStartOffset + len(self.currentToken)   
         
     if tokenEndOffset >= len(self.currentLine): # got to the end of the line? if so go back round to get first token of next line
-      self.skipCommentsEmptyLines()
       self.nextLine()
+      self.skipCommentsEmptyLines()
       self.nextToken()
       tokenEndOffset = self.currentTokenStartOffset + len(self.currentToken)   
     
@@ -115,7 +119,7 @@ class Tokenizer:
       return TokenType.KEYWORD
     elif self.currentToken in Symbols():
       return TokenType.SYMBOL
-    elif re.match("[a-zA-Z_][\w]+", self.currentToken):
+    elif re.match("[a-zA-Z_\w]+", self.currentToken):
       return TokenType.IDENTIFIER
     elif re.match('\d+', self.currentToken):
       return TokenType.INT_CONST
