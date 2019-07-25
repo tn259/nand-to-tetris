@@ -54,12 +54,15 @@ class Tokenizer:
     self.currentLineIdx += 1
     if self.hasMoreTokens():
       self.currentLine = self.inFileLines[self.currentLineIdx]
-      self.currentTokenStartOffset = 0
+    else:
+      self.currentLine = None
+    self.currentTokenStartOffset = 0
+      
 
   def nextToken(self):
     # Process Line
     tokenEndOffset = self.currentTokenStartOffset + 1
-    while tokenEndOffset < len(self.currentLine):
+    while self.currentLine != None and tokenEndOffset < len(self.currentLine):
       s = self.currentLine[self.currentTokenStartOffset:tokenEndOffset]
       endChar = self.currentLine[tokenEndOffset]
       #pdb.set_trace()
@@ -72,7 +75,7 @@ class Tokenizer:
           self.currentToken = self.currentLine[self.currentTokenStartOffset:nextQuotePos+2]
           break
         elif s in Symbols(): # Symbol
-          if s == "/" and endChar == "/": # comment not at start of line
+          if s == "/" and endChar in ["/", "*"]: # comment not at start of line
             self.nextLine()
             tokenEndOffset = self.currentTokenStartOffset + 1
           else:
@@ -91,14 +94,18 @@ class Tokenizer:
           tokenEndOffset += 1
 
   def skipCommentsEmptyLines(self):
-    while self.currentLine.startswith("//") or self.currentLine.startswith("/**") or self.currentLine in ["\n", "\r\n", "\t\n", "\t\r\n"]: # Skip comments
+    multiLineBlockComment = False
+    #pdb.set_trace()
+    while self.currentLine != None and (self.currentLine.startswith("//") or self.currentLine.startswith("/**") or self.currentLine in ["\n", "\r\n", "\t\n", "\t\r\n"]) or multiLineBlockComment: # Skip commentsa
+      commentLineSplit = self.currentLine.split()
+      if commentLineSplit:
+        if not multiLineBlockComment and self.currentLine.split()[-1] != "*/":
+          multiLineBlockComment = True
+        elif multiLineBlockComment and self.currentLine.split()[0] == "*/":
+          multiLineBlockComment = False
       self.nextLine()
 
   def advance(self):
-    if not self.hasMoreTokens():
-      print("Tokenizer::advance: Tokenizer has reached the end")
-      return
-
     self.skipCommentsEmptyLines()
 
     self.nextToken()
