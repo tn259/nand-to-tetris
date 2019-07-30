@@ -125,9 +125,6 @@ class Tokenizer:
     
     self.currentTokenStartOffset = tokenEndOffset
 
-    print (self.currentLine)
-    print (self.currentToken)
-   
   def tokenType(self):
     if self.currentToken.upper() in Keywords():
       return TokenType.KEYWORD
@@ -143,19 +140,29 @@ class Tokenizer:
   def symbol(self):
     if self.tokenType() == TokenType.SYMBOL:
       return self.currentToken
+    else:
+      print("token is not a symbol!")
 
   def keyword(self):
     if self.tokenType() == TokenType.KEYWORD:
       return self.currentToken
+    else:
+      print("token is not a keyword!")
 
   def identifier(self):
     if self.tokenType() == TokenType.IDENTIFIER:
       return self.currentToken
+    else:
+      print("token is not an identifier!")
 
   def intVal(self):
     if self.tokenType() == TokenType.INT_CONST:
       return self.currentToken
+    else:
+      print("token is not an integer!")
 
   def stringVal(self):
     if self.tokenType() == TokenType.STRING_CONST:
       return self.currentToken[1:-1] # strip quotes
+    else:
+      print("token is not a string!")

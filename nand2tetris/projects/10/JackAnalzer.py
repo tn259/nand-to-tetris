@@ -1,18 +1,25 @@
 import Tokenizer
+import CompilationEngine
 import glob
 import sys
 import os
 import pdb
 
-def main(arg):
+def main(arg, tokenizeOnly=False):
   if arg.endswith(".jack"):
     jackFile = arg
-    analyze(jackFile)
+    if tokenizeOnly:
+      analyzeT(jackFile)
+    else:
+      analyze(jackFile)
   else:
     directory = arg
     jackFiles = glob.glob(directory + "/*.jack")
     for f in jackFiles:
-      analyze(f)
+      if tokenizeOnly:
+        analyzeT(f)
+      else:
+        analyze(f)
 
 def charXMLify(char):
   if char == "<":
@@ -23,8 +30,21 @@ def charXMLify(char):
     return "&amp;"
   else:
     return char    
-    
+
 def analyze(jackFile):
+  outputFilename = os.path.splitext(jackFile)[0]+".xml.cmp"
+  t = Tokenizer.Tokenizer(jackFile)
+  ce = CompilationEngine.CompilationEngine(t, outputFilename)
+
+  t.advance()
+  if t.keyword() != "class":
+    print("jack file does not have a class!")
+    exit(1)
+
+  ce.CompileClass()
+   
+    
+def analyzeT(jackFile):
   tokenizedXmlFilename = os.path.splitext(jackFile)[0]+"T.xml.cmp"
   outputFile = open(tokenizedXmlFilename, 'w')
   outputFile.write("<tokens>\r\n")
@@ -52,4 +72,7 @@ def analyze(jackFile):
   outputFile.close()
 
 if __name__ == "__main__":
-  main(sys.argv[1])
+  if len(sys.argv) == 3 and argv[2] == "--tokenize_only": 
+    main(sys.argv[1], True)
+  else:
+    main(sys.argv[1])
