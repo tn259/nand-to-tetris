@@ -54,9 +54,9 @@ class Tokenizer:
     self.currentLineIdx += 1
     if self.hasMoreTokens():
       self.currentLine = self.inFileLines[self.currentLineIdx]
+      self.currentTokenStartOffset = 0
     else:
       self.currentLine = None
-    self.currentTokenStartOffset = 0
       
 
   def nextToken(self):
@@ -96,37 +96,44 @@ class Tokenizer:
   def skipCommentsEmptyLines(self):
     multiLineBlockComment = False
     #pdb.set_trace()
-    while self.currentLine != None and (self.currentLine.startswith("//") or self.currentLine.startswith("/**") or self.currentLine in ["\n", "\r\n", "\t\n", "\t\r\n"]) or multiLineBlockComment: # Skip commentsa
+    while self.currentLine != None and (self.currentLine.startswith("//") or self.currentLine.startswith("/**") or self.currentLine in ["\n", "\r\n", "\t\n", "\t\r\n"] or len(self.currentLine.split()) == 0) or multiLineBlockComment: # Skip commentsa
       commentLineSplit = self.currentLine.split()
       if commentLineSplit:
-        if not multiLineBlockComment and self.currentLine.split()[-1] != "*/":
+        if commentLineSplit[0] == "/**" and not commentLineSplit[-1] == "*/":
           multiLineBlockComment = True
-        elif multiLineBlockComment and self.currentLine.split()[0] == "*/":
+        elif multiLineBlockComment and commentLineSplit[-1] == "*/":
           multiLineBlockComment = False
       self.nextLine()
 
   def advance(self):
     self.skipCommentsEmptyLines()
 
+    if not self.hasMoreTokens():
+      return
+
     self.nextToken()
 
     tokenEndOffset = self.currentTokenStartOffset + len(self.currentToken)   
         
-    if tokenEndOffset >= len(self.currentLine): # got to the end of the line? if so go back round to get first token of next line
+    if tokenEndOffset >= len(self.currentLine): # got to the end of the line? if so go back round to get first token of next line 
       self.nextLine()
       self.skipCommentsEmptyLines()
+      if not self.hasMoreTokens():
+        return
       self.nextToken()
       tokenEndOffset = self.currentTokenStartOffset + len(self.currentToken)   
     
     self.currentTokenStartOffset = tokenEndOffset
-        
-    
+
+    print (self.currentLine)
+    print (self.currentToken)
+   
   def tokenType(self):
     if self.currentToken.upper() in Keywords():
       return TokenType.KEYWORD
     elif self.currentToken in Symbols():
       return TokenType.SYMBOL
-    elif re.match("[a-zA-Z_\w]+", self.currentToken):
+    elif re.match("[a-zA-Z_]+[\w]*", self.currentToken):
       return TokenType.IDENTIFIER
     elif re.match('\d+', self.currentToken):
       return TokenType.INT_CONST
