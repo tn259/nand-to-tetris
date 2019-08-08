@@ -394,16 +394,100 @@ class CompilationEngine:
     self.outputFile.write(self.indentation+"<expression>")
     self.writeNewline()
     self.incrementIndentation()
-    
+
+    self.compileTerm()
+    self.writeNewline()
+    self.tokenizer.advance()
+
+    while self.tokenizer.symbol() in ["+", "-", "*", "/", "&", "|", "<", ">", "="]:
+      self.writeSymbol()
+      self.writeNewline()
+      self.tokenizer.advance()
+      self.compileTerm()
+ 
     self.decrementIndentation()
     self.outputFile.write(self.indentation+"</expression>")
     self.writeNewline()
 
   def compileTerm(self):
-    pass
+    self.outputFile.write(self.indentation+"<term>")
+    self.writeNewline()
+    self.incrementIndentation()
+   
+    if self.tokenizer.intVal(): # int const
+      self.writeIntegerConstant()
+      self.writeNewline()
+      self.tokenizer.advance()
+    elif self.tokenizer.stringVal(): # string const
+      self.writestringConstant()
+      self.writeNewline()
+      self.tokenizer.advance()
+    elif self.tokenizer.keyword() in ["true", "false", "null", "this"]: # keyword const
+      self.writeKeyword()
+      self.writeNewline()
+      self.tokenizer.advance()
+    elif self.tokenizer.identifier(): # varName
+      self.writeIdentifier()
+      self.writeNewline()
+      self.tokenizer.advance()
+      if self.tokenizer.symbol() == '[': # varName[expression]
+        self.writeSymbol() # [
+        self.writeNewline()
+        self.tokenizer.advance()
+        self.compileExpression()
+        self.writeSymbol() # ]
+    elif self.tokenizer.symbol() == "(": # (expression)
+      self.writeSymbol() # (
+      self.writeNewline()
+      self.tokenizer.advance()
+      self.compileExpression()
+      self.writeSymbol() # )
+      self.writeNewline()
+      self.tokenizer.advance()
+    elif self.tokenizer.symbol() in ["-", "~"]: # unaryOp term
+      self.writeSymbol()
+      self.writeNewline()
+      self.tokenizer.advance()
+      self.compileTerm()
+    else: # subroutineCall
+      self.compileSubroutineCall()
+ 
+    self.decrementIndentation()
+    self.outputFile.write(self.indentation+"</term>")
+    self.writeNewline()
 
   def compileSubroutineCall(self):
-    pass
+    self.writeIdentifier()
+    self.writeNewline()
+    self.tokenizer.advance()
+
+    if self.tokenizer.symbol() == ".":
+      self.writeSymbol() # .
+      self.writeNewline()
+      self.tokenizer.advance()
+      self.writeIdentifier()
+      self.writeNewline()
+      self.tokenizer.advance()
+
+    self.writeSymbol() # (
+    self.writeNewline()
+    self.tokenizer.advance()
+    
+    self.compileExpressionList()
+
+    self.writeSymbol() # )
+    self.writeNewline()
+    self.tokenizer.advance()
+    
+  def compileExpressionList(self):
+    self.compileExpression()
+
+    while self.tokenizer.symbol() == ",":
+      self.writeSymbol()
+      self.writeNewline()
+      self.advance()
+
+      self.compileExpression()
 
   def writeNewline(self):
     self.outputFile.write("\r\n")
@@ -416,6 +500,12 @@ class CompilationEngine:
   
   def writeSymbol(self):  
     self.outputFile.write(self.indentation+"<symbol> "+self.tokenizer.symbol()+" </symbol>")
+
+  def writeIntegerConstant(self):
+    self.outputFile.write(self.indentation+"<integerConstant> "+self.tokenizer.intVal()+" </integerConstant>")
+
+  def writeStringConstant(self): 
+    self.outputFile.write(self.indentation+"<stringConstant> "+self.tokenizer.stringVal()+" </stringConstant>")
 
   def incrementIndentation(self):
     self.indentation += "  "
