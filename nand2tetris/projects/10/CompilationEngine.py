@@ -33,7 +33,6 @@ class CompilationEngine:
       self.CompileSubroutineDec()
       self.tokenizer.advance()
 
-    self.tokenizer.advance()
     self.writeSymbol() # }
     self.writeNewline()
 
@@ -93,7 +92,7 @@ class CompilationEngine:
     self.writeNewline()
 
     self.tokenizer.advance()
-    self.tokenizer.writeIdentifier() # subroutineName, should maybe store this?
+    self.writeIdentifier() # subroutineName, should maybe store this?
     self.writeNewline()
     
     self.tokenizer.advance()
@@ -176,15 +175,18 @@ class CompilationEngine:
     self.writeNewline()
 
   def compileVarDec(self):
-    self.outputFile.write(self.indentation+"<classVarDec>")
+    self.outputFile.write(self.indentation+"<varDec>")
     self.writeNewline()
     self.incrementIndentation()
 
     self.writeKeyword() # var
     self.writeNewline()
-    
     self.tokenizer.advance()
-    self.writeKeyword() # type
+    
+    if self.tokenizer.keyword() in self.types: # typename
+      self.writeKeyword()
+    else:
+      self.writeIdentifier()
     self.writeNewline()
 
     self.tokenizer.advance()
@@ -201,11 +203,11 @@ class CompilationEngine:
       self.writeNewline()
       self.tokenizer.advance()
 
-    self.writeSymbol()
+    self.writeSymbol() # ;
     self.writeNewline()  
     
     self.decrementIndentation()
-    self.outputFile.write(self.indentation+"</classVarDec>")
+    self.outputFile.write(self.indentation+"</varDec>")
     self.writeNewline()
 
   def compileStatements(self):
@@ -397,13 +399,13 @@ class CompilationEngine:
 
     self.compileTerm()
     self.writeNewline()
-    self.tokenizer.advance()
 
     while self.tokenizer.symbol() in ["+", "-", "*", "/", "&", "|", "<", ">", "="]:
       self.writeSymbol()
       self.writeNewline()
       self.tokenizer.advance()
       self.compileTerm()
+      self.writeNewline()
  
     self.decrementIndentation()
     self.outputFile.write(self.indentation+"</expression>")
@@ -436,6 +438,8 @@ class CompilationEngine:
         self.tokenizer.advance()
         self.compileExpression()
         self.writeSymbol() # ]
+        self.writeNewline()
+        self.tokenizer.advance()
     elif self.tokenizer.symbol() == "(": # (expression)
       self.writeSymbol() # (
       self.writeNewline()
