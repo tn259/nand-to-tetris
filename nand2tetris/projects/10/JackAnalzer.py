@@ -21,15 +21,6 @@ def main(arg, tokenizeOnly=False):
       else:
         analyze(f)
 
-def charXMLify(char):
-  if char == "<":
-    return "&lt;"
-  elif char == ">":
-    return "&gt;"
-  elif char == "&":
-    return "&amp;"
-  else:
-    return char    
 
 def analyze(jackFile):
   outputFilename = os.path.splitext(jackFile)[0]+".xml.cmp"

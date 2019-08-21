@@ -1,4 +1,15 @@
 # On entering each compile function, the current token should be the unit's starting token
+import pdb
+
+def charXMLify(char):
+  if char == "<":
+    return "&lt;"
+  elif char == ">":
+    return "&gt;"
+  elif char == "&":
+    return "&amp;"
+  else:
+    return char
 
 class CompilationEngine:
   def __init__(self, tokenizer, outputFilename):
@@ -100,8 +111,7 @@ class CompilationEngine:
     self.writeNewline()
 
     self.tokenizer.advance()
-    if self.tokenizer.symbol() != ")":
-      self.compileParameterList()
+    self.compileParameterList()
 
     self.writeSymbol() # ')'
     self.writeNewline()
@@ -118,22 +128,7 @@ class CompilationEngine:
     self.writeNewline()
     self.incrementIndentation()
 
-    if self.tokenizer.keyword() in self.types: # typename
-      self.writeKeyword()
-    else:
-      self.writeIdentifier()
-    self.writeNewline()
-
-    self.tokenizer.advance()
-    self.writeIdentifier() # varName
-    self.writeNewline()
-
-    self.tokenizer.advance()
-
-    while self.tokenizer.symbol() == ",":
-      self.writeSymbol()
-      self.writeNewline() # ,
-      self.tokenizer.advance()
+    if self.tokenizer.symbol() != ")":
 
       if self.tokenizer.keyword() in self.types: # typename
         self.writeKeyword()
@@ -146,6 +141,23 @@ class CompilationEngine:
       self.writeNewline()
 
       self.tokenizer.advance()
+
+      while self.tokenizer.symbol() == ",":
+        self.writeSymbol()
+        self.writeNewline() # ,
+        self.tokenizer.advance()
+
+        if self.tokenizer.keyword() in self.types: # typename
+          self.writeKeyword()
+        else:
+          self.writeIdentifier()
+        self.writeNewline()
+
+        self.tokenizer.advance()
+        self.writeIdentifier() # varName
+        self.writeNewline()
+
+        self.tokenizer.advance()
     
     self.decrementIndentation()
     self.outputFile.write(self.indentation+"</parameterList>")
@@ -195,7 +207,7 @@ class CompilationEngine:
 
     self.tokenizer.advance()
 
-    while self.tokenizer.symbol == ",":
+    while self.tokenizer.symbol() == ",":
       self.writeSymbol() # ,
       self.writeNewline()
       self.tokenizer.advance()
@@ -247,23 +259,23 @@ class CompilationEngine:
     self.tokenizer.advance()
 
     if self.tokenizer.symbol() == "[":
-      self.tokenizer.writeSymbol() # [
+      self.writeSymbol() # [
       self.writeNewline()
       self.tokenizer.advance()
 
       self.compileExpression()
 
-      self.tokenizer.writeSymbol() # ]
+      self.writeSymbol() # ]
       self.writeNewline()
       self.tokenizer.advance()
 
-    self.tokenizer.writeSymbol() # =
+    self.writeSymbol() # =
     self.writeNewline()
     self.tokenizer.advance()
 
     self.compileExpression()
 
-    self.tokenizer.writeSymbol() # ;
+    self.writeSymbol() # ;
     self.writeNewline()
     self.tokenizer.advance()
 
@@ -398,14 +410,12 @@ class CompilationEngine:
     self.incrementIndentation()
 
     self.compileTerm()
-    self.writeNewline()
 
     while self.tokenizer.symbol() in ["+", "-", "*", "/", "&", "|", "<", ">", "="]:
       self.writeSymbol()
       self.writeNewline()
       self.tokenizer.advance()
       self.compileTerm()
-      self.writeNewline()
  
     self.decrementIndentation()
     self.outputFile.write(self.indentation+"</expression>")
@@ -415,13 +425,13 @@ class CompilationEngine:
     self.outputFile.write(self.indentation+"<term>")
     self.writeNewline()
     self.incrementIndentation()
-   
+
     if self.tokenizer.intVal(): # int const
       self.writeIntegerConstant()
       self.writeNewline()
       self.tokenizer.advance()
     elif self.tokenizer.stringVal(): # string const
-      self.writestringConstant()
+      self.writeStringConstant()
       self.writeNewline()
       self.tokenizer.advance()
     elif self.tokenizer.keyword() in ["true", "false", "null", "this"]: # keyword const
@@ -429,6 +439,7 @@ class CompilationEngine:
       self.writeNewline()
       self.tokenizer.advance()
     elif self.tokenizer.identifier(): # varName
+      pdb.set_trace()
       self.writeIdentifier()
       self.writeNewline()
       self.tokenizer.advance()
@@ -440,6 +451,31 @@ class CompilationEngine:
         self.writeSymbol() # ]
         self.writeNewline()
         self.tokenizer.advance()
+      elif self.tokenizer.symbol() == '.':
+        self.writeSymbol() # .
+        self.writeNewline()
+        self.tokenizer.advance()
+        self.writeIdentifier() # subroutine name
+        self.writeNewline()
+        self.tokenizer.advance()
+        self.writeSymbol() # (
+        self.writeNewline()
+        self.tokenizer.advance()
+        self.compileExpressionList()
+        self.writeSymbol() # )
+        self.writeNewline()
+        self.tokenizer.advance()
+      elif self.tokenizer.symbol() == '(':
+        self.writeIdentifier() # subroutine name
+        self.writeNewline()
+        self.tokenizer.advance()
+        self.writeSymbol() # (
+        self.writeNewline()
+        self.tokenizer.advance()
+        self.compileExpressionList()
+        self.writeSymbol() # )
+        self.writeNewline()
+        self.tokenizer.advance() 
     elif self.tokenizer.symbol() == "(": # (expression)
       self.writeSymbol() # (
       self.writeNewline()
@@ -454,7 +490,7 @@ class CompilationEngine:
       self.tokenizer.advance()
       self.compileTerm()
     else: # subroutineCall
-      self.compileSubroutineCall()
+      print("Should not come here")
  
     self.decrementIndentation()
     self.outputFile.write(self.indentation+"</term>")
@@ -484,6 +520,10 @@ class CompilationEngine:
     self.tokenizer.advance()
     
   def compileExpressionList(self):
+    self.outputFile.write(self.indentation+"<expressionList>")
+    self.writeNewline()
+    self.incrementIndentation()
+
     self.compileExpression()
 
     while self.tokenizer.symbol() == ",":
@@ -492,6 +532,10 @@ class CompilationEngine:
       self.advance()
 
       self.compileExpression()
+
+    self.decrementIndentation()
+    self.outputFile.write(self.indentation+"</expressionList>")
+    self.writeNewline()
 
   def writeNewline(self):
     self.outputFile.write("\r\n")
@@ -503,7 +547,7 @@ class CompilationEngine:
     self.outputFile.write(self.indentation+"<identifier> "+self.tokenizer.identifier()+" </identifier>")
   
   def writeSymbol(self):  
-    self.outputFile.write(self.indentation+"<symbol> "+self.tokenizer.symbol()+" </symbol>")
+    self.outputFile.write(self.indentation+"<symbol> "+charXMLify(self.tokenizer.symbol())+" </symbol>")
 
   def writeIntegerConstant(self):
     self.outputFile.write(self.indentation+"<integerConstant> "+self.tokenizer.intVal()+" </integerConstant>")
