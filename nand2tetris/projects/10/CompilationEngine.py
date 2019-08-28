@@ -49,6 +49,7 @@ class CompilationEngine:
 
     self.decrementIndentation()
     self.outputFile.write(self.indentation+"</class>")
+    self.writeNewline()
      
 
   def CompileClassVarDec(self):
@@ -439,7 +440,7 @@ class CompilationEngine:
       self.writeNewline()
       self.tokenizer.advance()
     elif self.tokenizer.identifier(): # varName
-      pdb.set_trace()
+      #pdb.set_trace()
       self.writeIdentifier()
       self.writeNewline()
       self.tokenizer.advance()
@@ -512,7 +513,7 @@ class CompilationEngine:
     self.writeSymbol() # (
     self.writeNewline()
     self.tokenizer.advance()
-    
+   
     self.compileExpressionList()
 
     self.writeSymbol() # )
@@ -524,14 +525,16 @@ class CompilationEngine:
     self.writeNewline()
     self.incrementIndentation()
 
-    self.compileExpression()
-
-    while self.tokenizer.symbol() == ",":
-      self.writeSymbol()
-      self.writeNewline()
-      self.advance()
-
+    if self.tokenizer.symbol() != ")": 
       self.compileExpression()
+
+      while self.tokenizer.symbol() == ",":
+        #pdb.set_trace()
+        self.writeSymbol()
+        self.writeNewline()
+        self.tokenizer.advance()
+
+        self.compileExpression()
 
     self.decrementIndentation()
     self.outputFile.write(self.indentation+"</expressionList>")
