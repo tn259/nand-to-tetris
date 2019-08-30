@@ -119,7 +119,7 @@ class CompilationEngine:
     self.writeKeyword() # constructor | function | method
     self.writeNewline()
 
-    if self.tokenizer.keyword() in ["constructor", "method"]:
+    if self.tokenizer.keyword() == "method":
       self.routineLevelST.define("this", self.classType, SymbolTable.Kind.ARG) # add this var to method level ST 
       self.writeIdentifierHandling("this", True, False, True)
 
@@ -302,6 +302,8 @@ class CompilationEngine:
     self.writeKeyword() # let
     self.writeNewline()
     self.tokenizer.advance()
+
+    self.writeIdentifierHandling(self.tokenizer.identifier(), False, True, True)
 
     self.writeIdentifier() # varName
     self.writeNewline()
@@ -491,6 +493,7 @@ class CompilationEngine:
       #pdb.set_trace()
       self.writeIdentifier()
       self.writeNewline()
+      self.writeIdentifierHandling(self.tokenizer.identifier(), False, True, True)
       self.tokenizer.advance()
       if self.tokenizer.symbol() == '[': # varName[expression]
         self.writeSymbol() # [
@@ -548,9 +551,12 @@ class CompilationEngine:
   def compileSubroutineCall(self):
     self.writeIdentifier()
     self.writeNewline()
+    identifier = self.tokenizer.identifier()
     self.tokenizer.advance()
 
     if self.tokenizer.symbol() == ".":
+      if identifier != self.classType: # varName.subroutineName
+        self.writeIdentifierHandling(identifier, False, True, True)
       self.writeSymbol() # .
       self.writeNewline()
       self.tokenizer.advance()
