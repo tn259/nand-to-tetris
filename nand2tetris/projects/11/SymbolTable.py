@@ -21,6 +21,9 @@ class SymbolTable:
   def define(self, name, varType, kind):
     self.map[name] = VarProperties(varType, kind, self.varCount(kind))
 
+  def find(self, name):
+    return name in self.map
+
   def varCount(self, kind):
     count = 0
     for v in self.map.values():

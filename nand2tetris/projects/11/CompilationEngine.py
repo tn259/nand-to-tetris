@@ -21,7 +21,7 @@ class CompilationEngine:
     self.types = ["int", "char", "boolean"]
     self.classType = ""
     self.classLevelST = SymbolTable.SymbolTable()
-    self.routineLevelST = None
+    self.routineLevelST = SymbolTable.SymbolTable()
     self.subroutineSTs = []
 
   def resetRoutineSymbolTables(self):
@@ -87,7 +87,7 @@ class CompilationEngine:
     self.writeNewline()
 
     self.classLevelST.define(varName, varType, varKind) # add var declaration to class level ST
-    self.writeIdentifierHandling(self.classLevelST.kindOf(varName), self.classLevelST.indexOf(varName), True, False)
+    self.writeIdentifierHandling(varName, True, False, False)
 
     self.tokenizer.advance()
 
@@ -99,7 +99,7 @@ class CompilationEngine:
       self.writeNewline()
       varName = self.tokenizer.identifier()
       self.classLevelST.define(varName, varType, varKind) # add var declaration to class level ST
-      self.writeIdentifierHandling(self.classLevelST.kindOf(varName), self.classLevelST.indexOf(varName), True, False)
+      self.writeIdentifierHandling(varName, True, False, False)
       self.tokenizer.advance()
 
     self.writeSymbol() # ;
@@ -121,7 +121,7 @@ class CompilationEngine:
 
     if self.tokenizer.keyword() in ["constructor", "method"]:
       self.routineLevelST.define("this", self.classType, SymbolTable.Kind.ARG) # add this var to method level ST 
-      self.writeIdentifierHandling(self.routineLevelST.kindOf("this"), self.routineLevelST.indexOf("this"), True, False)
+      self.writeIdentifierHandling("this", True, False, True)
 
     self.tokenizer.advance() # typename
     if self.tokenizer.keyword() in self.types or self.tokenizer.keyword() == "void":
@@ -172,7 +172,7 @@ class CompilationEngine:
       self.writeNewline()
 
       self.routineLevelST.define(varName, varType, SymbolTable.Kind.ARG)
-      self.writeIdentifierHandling(self.routineLevelST.kindOf(varName), self.routineLevelST.indexOf(varName), True, False)
+      self.writeIdentifierHandling(varName, True, False, True)
 
       self.tokenizer.advance()
 
@@ -195,7 +195,7 @@ class CompilationEngine:
         self.writeNewline()
 
         self.routineLevelST.define(varName, varType, SymbolTable.Kind.ARG)
-        self.writeIdentifierHandling(self.routineLevelST.kindOf(varName), self.routineLevelST.indexOf(varName), True, False)
+        self.writeIdentifierHandling(varName, True, False, True)
 
         self.tokenizer.advance()
     
@@ -249,7 +249,7 @@ class CompilationEngine:
     self.writeNewline()
 
     self.routineLevelST.define(varName, varType, SymbolTable.Kind.VAR)
-    self.writeIdentifierHandling(self.routineLevelST.kindOf(varName), self.routineLevelST.indexOf(varName), True, False)
+    self.writeIdentifierHandling(varName, True, False, True)
 
     self.tokenizer.advance()
 
@@ -261,7 +261,7 @@ class CompilationEngine:
       self.writeIdentifier() # varName
       self.writeNewline()
       self.routineLevelST.define(varName, varType, SymbolTable.Kind.VAR)
-      self.writeIdentifierHandling(self.routineLevelST.kindOf(varName), self.routineLevelST.indexOf(varName), True, False)
+      self.writeIdentifierHandling(varName, True, False, True)
       self.tokenizer.advance()
 
     self.writeSymbol() # ;
@@ -606,8 +606,25 @@ class CompilationEngine:
   def writeStringConstant(self): 
     self.outputFile.write(self.indentation+"<stringConstant> "+self.tokenizer.stringVal()+" </stringConstant>")
 
-  def writeIdentifierHandling(self, category, index, defined, used):
-    self.outputFile.write(self.indentation+"<IDHANDLING> Cat: "+str(category)+" index: "+str(index)+" defined: "+str(defined)+" used: "+str(used)+" </IDHANDLING>")
+  def writeIdentifierHandling(self, name, defined, used, routineNotClass=True):
+    if defined:
+      if routineNotClass:
+        self.writeRoutineIdentifierHandling(self.routineLevelST.kindOf(name), self.routineLevelST.indexOf(name), defined, used)
+      else:
+        self.writeClassIdentifierHandling(self.classLevelST.kindOf(name), self.classLevelST.indexOf(name), defined, used) 
+    else:
+      if self.routineLevelST.find(name):
+        self.writeRoutineIdentifierHandling(self.routineLevelST.kindOf(name), self.routineLevelST.indexOf(name), defined, used)
+      elif self.classLevelST.find(name):
+        self.writeClassIdentifierHandling(self.classLevelST.kindOf(name), self.classLevelST.indexOf(name), defined, used) 
+        
+
+  def writeClassIdentifierHandling(self, category, index, defined, used):
+    self.outputFile.write(self.indentation+"<CLASS IDHANDLING> Cat: "+str(category)+" index: "+str(index)+" defined: "+str(defined)+" used: "+str(used)+" </CLASS IDHANDLING>")
+    self.writeNewline() 
+
+  def writeRoutineIdentifierHandling(self, category, index, defined, used):
+    self.outputFile.write(self.indentation+"<ROUTINE IDHANDLING> Cat: "+str(category)+" index: "+str(index)+" defined: "+str(defined)+" used: "+str(used)+" </ROUTINE IDHANDLING>")
     self.writeNewline() 
 
   def incrementIndentation(self):
