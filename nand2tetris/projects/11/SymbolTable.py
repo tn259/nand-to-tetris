@@ -9,10 +9,13 @@ class Kind(Enum):
   NONE = 4
 
 class VarProperties:
-  def __init__(self, varType, kind, index):
+  def __init__(self, varType=None, kind=None, index=None):
     self.varType = varType
     self.kind = kind
     self.index = index
+
+  def empty():
+    return not varType or not kind or not index
 
 class SymbolTable:
   def __init__(self):
