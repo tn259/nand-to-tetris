@@ -1,6 +1,7 @@
 # On entering each compile function, the current token should be the unit's starting token
 import pdb
 import SymbolTable
+import Enum from enum
 
 def binaryOperatorToCommand(operator):
   if operator == "+":
@@ -36,6 +37,12 @@ def varKindToSegment(kind):
   elif kind == SymbolTable.Kind.VAR:
     return VMWriter.Segment.LOCAL
 
+class SubroutineType(Enum):
+  CTOR = 0
+  METHOD = 1
+  FUNTION = 2
+  NONE = 3
+
 def charXMLify(char):
   if char == "<":
     return "&lt;"
@@ -58,6 +65,9 @@ class CompilationEngine:
     self.routineLevelST = SymbolTable.SymbolTable()
     self.ifStatmentIndex = 0
     self.whileStatementIndex = 0
+    self.currentSubroutineDecType = SubroutineType.NONE
+    self.currentSubroutineDecName = ""
+    self.currentSubroutineDecReturnsVoid = False
     self.subroutineSTs = []
 
   def resetRoutineSymbolTables(self):
@@ -155,28 +165,42 @@ class CompilationEngine:
     self.writeKeyword() # constructor | function | method
 
     if self.tokenizer.keyword() == "method":
+      self.currentSubroutineDecType = SubroutineType.METHOD
       self.routineLevelST.define("this", self.classType, SymbolTable.Kind.ARG) # add this var to method level ST 
       self.writeIdentifierHandling("this", True, False, True)
+    elif self.tokenizer.keyword() == "constructor":
+      self.currentSubroutineDecType = SubroutineType.CTOR
+    elif self.tokenizer.keyword() == "function":
+      self.currentSubroutineDecType = SubroutineType.FUNCTION
 
     self.tokenizer.advance() # typename
     if self.tokenizer.keyword() in self.types or self.tokenizer.keyword() == "void":
       self.writeKeyword()
+      if self.tokenizer.keyword() == "void":
+        self.currentSubroutineDecReturnsVoid = True
     else:
       self.writeIdentifier()
 
     self.tokenizer.advance()
     self.writeIdentifier() # subroutineName, should maybe store this?
+
+    self.currentSubroutineDecName = self.tokenizer.identifier()
     
     self.tokenizer.advance()
     self.writeSymbol() # '('
 
     self.tokenizer.advance()
-    self.compileParameterList()
+    nParams = self.compileParameterList()
 
     self.writeSymbol() # ')'
 
+
     self.tokenizer.advance()
     self.compileSubroutineBody()
+      
+    self.currentSubroutineDecType = SubroutineType.NONE
+    self.currentSubroutineDecName = ""
+    self.currentSubroutineDecReturnsVoid = False
     
     self.decrementIndentation()
     self.outputFile.write(self.indentation+"</subroutineDec>")
@@ -186,6 +210,8 @@ class CompilationEngine:
     self.outputFile.write(self.indentation+"<parameterList>")
     self.writeNewline()
     self.incrementIndentation()
+
+    nParams = 0
 
     if self.tokenizer.symbol() != ")":
 
@@ -204,6 +230,8 @@ class CompilationEngine:
       self.writeIdentifierHandling(varName, True, False, True)
 
       self.tokenizer.advance()
+
+      nParams += 1
 
       while self.tokenizer.symbol() == ",":
         self.writeSymbol()
@@ -224,10 +252,14 @@ class CompilationEngine:
         self.writeIdentifierHandling(varName, True, False, True)
 
         self.tokenizer.advance()
+
+        nParams += 1
     
     self.decrementIndentation()
     self.outputFile.write(self.indentation+"</parameterList>")
     self.writeNewline()
+
+    return nParams
 
   def compileSubroutineBody(self):
     self.outputFile.write(self.indentation+"<subroutineBody>")
@@ -238,9 +270,21 @@ class CompilationEngine:
 
     self.tokenizer.advance()
 
+    nLocal = 0
     while self.tokenizer.keyword() == "var":
       self.compileVarDec()
       self.tokenizer.advance()
+      nLocals += 1
+
+    self.vmWriter.writeFunction(self.classType+"."self.currentSubroutineDecName, nLocals)
+
+    if self.currentSubroutineDecType == SubroutineType.CTOR:
+      self.vmWriter.writePush(VMWriter.Segment.NONE, nParams)
+      self.vmWriter.writeCall("Memory.alloc", 1)
+      self.vmWriter.writePop(VMWriter.Segment.POINTER, 0)
+    elif self.currentSubroutineDecType == SubroutineType.METHOD:
+      self.vmWriter.writePush(VMWriter.Segment.ARG, 0)
+      self.vmWriter.writePop(VMWriter.Segment.POINTER, 0)
 
     self.compileStatements()
 
@@ -450,6 +494,8 @@ class CompilationEngine:
 
     self.compileSubroutineCall()
 
+    self.vmWriter.writePop(VMWriter.Segment.TEMP, 0) # assume do statements always call void routines
+
     self.writeSymbol() # ;
     self.tokenizer.advance()
  
@@ -470,6 +516,11 @@ class CompilationEngine:
 
     self.writeSymbol() # ;
     self.tokenizer.advance()
+
+    if self.currentSubroutineDecType == SubroutineType.CTOR:
+      self.vmWriter.writePush(VMWriter.Segment.POINTER, 0) # returns this
+    elif self.currentSubroutineDecReturnsVoid:
+      self.vmWriter.writePush(VMWriter.Segment.CONST, 0)
 
     self.vmWriter.writeReturn()
  
@@ -532,13 +583,13 @@ class CompilationEngine:
       self.tokenizer.advance()
     elif self.tokenizer.identifier(): # varName
 
-      varName = self.tokenizer.identifier()
-      varProperties = self.findVariable(varName)
+      identifier = self.tokenizer.identifier()
+      varProperties = self.findVariable(identifier)
       if not varProperties.empty():
         self.vmWriter.writePush(varKindToSegment(varProperties.kind), varProperties.index)
+        self.writeIdentifierHandling(self.tokenizer.identifier(), False, True, True)
 
       self.writeIdentifier()
-      self.writeIdentifierHandling(self.tokenizer.identifier(), False, True, True)
       self.tokenizer.advance()
       if self.tokenizer.symbol() == '[': # varName[expression]
         self.writeSymbol() # [
@@ -549,6 +600,14 @@ class CompilationEngine:
       elif self.tokenizer.symbol() == '.':
         self.writeSymbol() # .
         self.tokenizer.advance()
+
+        methodCall = False
+        if varProperties not empty():
+          methodCall = True
+          routineName = varProperties.typeOf(identifier)+"."+self.tokenizer.identifier()
+        else:
+          routineName = identifier+"."self.tokenizer.identifier()  
+
         self.writeIdentifier() # subroutine name
         self.tokenizer.advance()
         self.writeSymbol() # (
@@ -556,14 +615,19 @@ class CompilationEngine:
         nArgs = self.compileExpressionList()
         self.writeSymbol() # )
         self.tokenizer.advance()
-        self.vmWriter.writeCall(routineName, nArgs+1) # +1 for the object as first arg
-      elif self.tokenizer.symbol() == '(':
+
+        if methodCall: # implicit this argument
+          nArgs += 1
+
+        self.vmWriter.writeCall(routineName, nArgs)
+      elif self.tokenizer.symbol() == '(': # assume private method call
+        routineName = identifier
         self.writeSymbol() # (
         self.tokenizer.advance()
         nArgs = self.compileExpressionList()
         self.writeSymbol() # )
         self.tokenizer.advance() 
-        self.vmWriter.writeCall(routineName, nArgs)
+        self.vmWriter.writeCall(self.classType+"."+routineName, nArgs+1)
     elif self.tokenizer.symbol() == "(": # (expression)
       self.writeSymbol() # (
       self.tokenizer.advance()
@@ -594,19 +658,25 @@ class CompilationEngine:
     methodCall = False
 
     if self.tokenizer.symbol() == ".":
-      if identifier != self.classType: # varName.subroutineName
-        varProperties = self.findVariable(identifier)
-        if not varProperties.empty():
-          self.vmWriter.writePush(varKindToSegment(varProperties.kind), varProperties.index)
+      varProperties = self.findVariable(identifier)
+       if not varProperties.empty():
+        self.vmWriter.writePush(varKindToSegment(varProperties.kind), varProperties.index)
         self.writeIdentifierHandling(identifier, False, True, True)
         methodCall = True
+
       self.writeSymbol() # .
       self.tokenizer.advance()
-      routineName = self.tokenizer.identifier()
+      
+      if not varProperties.empty(): # varName.subroutineName
+        routineName = varProperties.typeOf(identifier)+"."+self.tokenizer.identifier()
+      else: # ctor 
+        routineName = identifier+"."+self.tokenizer.identifier()
+
       self.writeIdentifier()
       self.tokenizer.advance()
     else:
-      routineName = identifier
+      routineName = self.classType+"."+identifier # straight subroutine call with no '.' assume private method call
+      methodCall = True
       
 
     self.writeSymbol() # (

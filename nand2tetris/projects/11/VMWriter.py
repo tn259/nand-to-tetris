@@ -9,6 +9,7 @@ class Segment(Enum):
   THAT = 5
   POINTER = 6
   TEMP = 7
+  NONE = 8
 
 class Command(Enum):
   ADD = 0
@@ -26,7 +27,10 @@ class VMWriter:
     self.outputFile = open(outputFilename, 'w')
 
   def writePush(self, segment, index):
-    self.outputFile.write("push "+segment.name.lower()+" "+str(index))
+    if segment != Segment.NONE
+      self.outputFile.write("push "+segment.name.lower()+" "+str(index))
+    else:
+      self.outputFile.write("push "+str(index))
     self.writeNewline()
 
   def writePop(self, segment, index):
