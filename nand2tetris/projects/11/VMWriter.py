@@ -1,8 +1,8 @@
-import Enum from enum
+from enum import Enum
 
 class Segment(Enum):
-  CONST = 0
-  ARG = 1
+  CONSTANT = 0
+  ARGUMENT = 1
   LOCAL = 2
   STATIC = 3
   THIS = 4
@@ -27,7 +27,7 @@ class VMWriter:
     self.outputFile = open(outputFilename, 'w')
 
   def writePush(self, segment, index):
-    if segment != Segment.NONE
+    if segment != Segment.NONE:
       self.outputFile.write("push "+segment.name.lower()+" "+str(index))
     else:
       self.outputFile.write("push "+str(index))

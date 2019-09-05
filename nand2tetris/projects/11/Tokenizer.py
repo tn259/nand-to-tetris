@@ -53,7 +53,7 @@ class Tokenizer:
   def nextLine(self):
     self.currentLineIdx += 1
     if self.hasMoreTokens():
-      self.currentLine = self.inFileLines[self.currentLineIdx]
+      self.currentLine = self.inFileLines[self.currentLineIdx].lstrip()
       self.currentTokenStartOffset = 0
     else:
       self.currentLine = None

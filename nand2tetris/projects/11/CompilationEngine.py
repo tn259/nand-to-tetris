@@ -1,7 +1,8 @@
 # On entering each compile function, the current token should be the unit's starting token
 import pdb
 import SymbolTable
-import Enum from enum
+import VMWriter
+from enum import Enum
 
 def binaryOperatorToCommand(operator):
   if operator == "+":
@@ -33,25 +34,25 @@ def varKindToSegment(kind):
   elif kind == SymbolTable.Kind.FIELD:
     return VMWriter.Segment.THIS
   elif kind == SymbolTable.Kind.ARG:
-    return VMWriter.Segment.ARG
+    return VMWriter.Segment.ARGUMENT
   elif kind == SymbolTable.Kind.VAR:
     return VMWriter.Segment.LOCAL
 
 class SubroutineType(Enum):
   CTOR = 0
   METHOD = 1
-  FUNTION = 2
+  FUNCTION = 2
   NONE = 3
 
 class CompilationEngine:
-  def __init__(self, tokenizer, outputFilename, vmWriter):
+  def __init__(self, tokenizer, vmWriter):
     self.tokenizer = tokenizer
     self.vmWriter = vmWriter
     self.types = ["int", "char", "boolean"]
     self.className = ""
     self.classLevelST = SymbolTable.SymbolTable()
     self.routineLevelST = SymbolTable.SymbolTable()
-    self.ifStatmentIndex = 0
+    self.ifStatementIndex = 0
     self.whileStatementIndex = 0
     self.currentSubroutineDecType = SubroutineType.NONE
     self.currentSubroutineDecName = ""
@@ -69,17 +70,20 @@ class CompilationEngine:
       st = self.classLevelST
     else:
       print("var not found")
-      return SymbolTable.VariableProperties()
-    return SymbolTable.VariableProperties(st.typeOf(name), st.kindOf(name), st.indexOf(name))
+      return SymbolTable.VarProperties()
+    return SymbolTable.VarProperties(st.typeOf(name), st.kindOf(name), st.indexOf(name))
 
 
   def CompileClass(self):
     # tokenizer starts by holding keyword "class"
-    self.tokenizer.advance() # classname
+    self.tokenizer.advance() 
+    # classname
     self.className = self.tokenizer.identifier()
+
+    pdb.set_trace()
    
     self.tokenizer.advance()
-    # {
+    # '{'
 
     self.tokenizer.advance()
 
@@ -91,20 +95,22 @@ class CompilationEngine:
       self.CompileSubroutineDec()
       self.tokenizer.advance()
 
-    # }
+    # '}'
 
 
   def CompileClassVarDec(self):
-    # field | static
+    # 'field' | 'static'
     varKind = SymbolTable.Kind[self.tokenizer.keyword().upper()]
 
-    self.tokenizer.advance() # typename
+    self.tokenizer.advance() 
+    # typename
     if self.tokenizer.keyword() in self.types:
       varType = self.tokenizer.keyword()
     else:
       varType = self.tokenizer.identifier()
 
-    self.tokenizer.advance() # varName
+    self.tokenizer.advance() 
+    # varName
     varName = self.tokenizer.identifier()
 
     self.classLevelST.define(varName, varType, varKind) # add var declaration to class level ST
@@ -112,12 +118,13 @@ class CompilationEngine:
     self.tokenizer.advance()
 
     while self.tokenizer.symbol() == ',':
-      self.tokenizer.advance() # varName
+      self.tokenizer.advance() 
+      # varName
       varName = self.tokenizer.identifier()
       self.classLevelST.define(varName, varType, varKind) # add var declaration to class level ST
       self.tokenizer.advance()
 
-    # ;
+    # ';'
 
 
   def CompileSubroutineDec(self):
@@ -131,22 +138,24 @@ class CompilationEngine:
     elif self.tokenizer.keyword() == "function":
       self.currentSubroutineDecType = SubroutineType.FUNCTION
 
-    self.tokenizer.advance() # typename
+    self.tokenizer.advance() 
+    # typename
     if self.tokenizer.keyword() == "void":
       self.currentSubroutineDecReturnsVoid = True
 
-    self.tokenizer.advance() # subroutineName
+    self.tokenizer.advance() 
+    # subroutineName
 
     self.currentSubroutineDecName = self.tokenizer.identifier()
     
     self.tokenizer.advance() 
 
-    # (
+    # '('
 
     self.tokenizer.advance()
     nParams = self.compileParameterList()
 
-    # )
+    # ')'
 
     self.tokenizer.advance()
     self.compileSubroutineBody()
@@ -202,20 +211,20 @@ class CompilationEngine:
 
     self.tokenizer.advance()
 
-    nLocal = 0
+    nLocals = 0
     while self.tokenizer.keyword() == "var":
       self.compileVarDec()
       self.tokenizer.advance()
       nLocals += 1
 
-    self.vmWriter.writeFunction(self.className+"."self.currentSubroutineDecName, nLocals)
+    self.vmWriter.writeFunction(self.className+"."+self.currentSubroutineDecName, nLocals)
 
     if self.currentSubroutineDecType == SubroutineType.CTOR:
       self.vmWriter.writePush(VMWriter.Segment.NONE, nParams)
       self.vmWriter.writeCall("Memory.alloc", 1)
       self.vmWriter.writePop(VMWriter.Segment.POINTER, 0)
     elif self.currentSubroutineDecType == SubroutineType.METHOD:
-      self.vmWriter.writePush(VMWriter.Segment.ARG, 0)
+      self.vmWriter.writePush(VMWriter.Segment.ARGUMENT, 0)
       self.vmWriter.writePop(VMWriter.Segment.POINTER, 0)
 
     self.compileStatements()
@@ -278,22 +287,22 @@ class CompilationEngine:
 
       self.vmWriter.writePush(VMWriter.Segment.NONE, varName)
 
-      self.writeSymbol() # '['
+      # '['
       self.tokenizer.advance()
 
       self.compileExpression()
 
       self.vmWriter.writeArithmetic(VMWriter.Command.ADD)
 
-      self.writeSymbol() # ']'
+      # ']'
       self.tokenizer.advance()
 
-    self.writeSymbol() # '='
+    # '='
     self.tokenizer.advance()
 
     self.compileExpression()
 
-    self.writeSymbol() # ';'
+    # ';'
     self.tokenizer.advance()
 
     if arrayAccess:
@@ -302,7 +311,7 @@ class CompilationEngine:
       self.vmWriter.writePush(VMWriter.Segment.TEMP, 0)
       self.vmWriter.writePop(VMWriter.Segment.THAT, 0)
     else:
-      varProperties = self.findVariable(identifier)
+      varProperties = self.findVariable(varName)
       if not varProperties.empty():
         self.vmWriter.writePop(varKindToSegment(varProperties.kind), varProperties.index)
 
@@ -410,7 +419,7 @@ class CompilationEngine:
     if self.currentSubroutineDecType == SubroutineType.CTOR:
       self.vmWriter.writePush(VMWriter.Segment.POINTER, 0) # returns this
     elif self.currentSubroutineDecReturnsVoid:
-      self.vmWriter.writePush(VMWriter.Segment.CONST, 0) # ignore return value for void
+      self.vmWriter.writePush(VMWriter.Segment.CONSTANT, 0) # ignore return value for void
 
     self.vmWriter.writeReturn()
 
@@ -433,24 +442,24 @@ class CompilationEngine:
   def compileTerm(self):
 
     if self.tokenizer.intVal(): # int const
-      self.vmWriter.writePush(VMWriter.Segment.CONST, self.tokenizer.intVal())
+      self.vmWriter.writePush(VMWriter.Segment.CONSTANT, self.tokenizer.intVal())
       self.tokenizer.advance()
 
     elif self.tokenizer.stringVal(): # string const
       string = self.tokenizer.stringVal()
       self.vmWriter.writeCall("String.new", str(len(string)))
       for c in string:
-        self.vmWriter.writeCall("String.append", str(ord(c)) 
+        self.vmWriter.writeCall("String.appendChar", str(ord(c))) 
       self.tokenizer.advance()
 
     elif self.tokenizer.keyword() in ["true", "false", "null", "this"]: # keyword const
       if self.tokenizer.keyword() == "true":
-        self.vmWriter.writePush(VMWriter.Segment.CONST, str(1))
+        self.vmWriter.writePush(VMWriter.Segment.CONSTANT, str(1))
         self.vmWriter.writeArithmetic(VMWriter.Command.NEG)
       elif self.tokenizer.keyword() in ["false, null"]:
-        self.vmWriter.writePush(VMWriter.Segment.CONST, str(0))
+        self.vmWriter.writePush(VMWriter.Segment.CONSTANT, str(0))
       elif self.tokenizer.keyword() == "this":
-        # ??
+        self.vmWriter.writePush(VMWriter.Segment.ARGUMENT, str(0)) # 'this' in routine
       self.tokenizer.advance()
 
     elif self.tokenizer.identifier(): # varName
@@ -477,11 +486,11 @@ class CompilationEngine:
         self.tokenizer.advance()
 
         methodCall = False
-        if varProperties not empty():
+        if not varProperties.empty():
           methodCall = True
           routineName = varProperties.typeOf(identifier)+"."+self.tokenizer.identifier()
         else:
-          routineName = identifier+"."self.tokenizer.identifier()  
+          routineName = identifier+"."+self.tokenizer.identifier()  
 
         self.tokenizer.advance()
         # '('
@@ -525,6 +534,9 @@ class CompilationEngine:
  
 
   def compileSubroutineCall(self):
+    identifier = self.tokenizer.identifier()
+    self.tokenizer.advance()
+    
     methodCall = False
 
     if self.tokenizer.symbol() == ".":
@@ -566,6 +578,7 @@ class CompilationEngine:
 
     if self.tokenizer.symbol() != ")": 
       self.compileExpression()
+      numExpressions += 1
 
       while self.tokenizer.symbol() == ",":
         #pdb.set_trace()

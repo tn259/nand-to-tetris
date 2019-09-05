@@ -14,8 +14,8 @@ class VarProperties:
     self.kind = kind
     self.index = index
 
-  def empty():
-    return not varType or not kind or not index
+  def empty(self):
+    return not self.varType or not self.kind or not self.index
 
 class SymbolTable:
   def __init__(self):
