@@ -1,4 +1,5 @@
 from enum import Enum
+import pdb
 
 
 class Kind(Enum):
@@ -15,7 +16,7 @@ class VarProperties:
     self.index = index
 
   def empty(self):
-    return not self.varType or not self.kind or not self.index
+    return not self.varType or not self.kind or self.index == None
 
 class SymbolTable:
   def __init__(self):

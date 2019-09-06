@@ -29,6 +29,7 @@ def compileJack(jackFile):
     exit(1)
 
   ce.CompileClass()
+  vmw.close()
    
 if __name__ == "__main__":
     main(sys.argv[1])

@@ -17,6 +17,8 @@ def binaryOperatorToCommand(operator):
     return VMWriter.Command.LT
   elif operator == ">":
     return VMWriter.Command.GT
+  elif operator == "=":
+    return VMWriter.Command.EQ
   else:
     print("Invalid BINARY operator!")
 
@@ -80,7 +82,7 @@ class CompilationEngine:
     # classname
     self.className = self.tokenizer.identifier()
 
-    pdb.set_trace()
+    #pdb.set_trace()
    
     self.tokenizer.advance()
     # '{'
@@ -213,9 +215,9 @@ class CompilationEngine:
 
     nLocals = 0
     while self.tokenizer.keyword() == "var":
-      self.compileVarDec()
+      nVars = self.compileVarDec()
       self.tokenizer.advance()
-      nLocals += 1
+      nLocals += nVars
 
     self.vmWriter.writeFunction(self.className+"."+self.currentSubroutineDecName, nLocals)
 
@@ -233,6 +235,10 @@ class CompilationEngine:
 
 
   def compileVarDec(self):
+    pdb.set_trace()
+
+    nVars = 0
+
     # 'var'
     self.tokenizer.advance()
     
@@ -244,6 +250,7 @@ class CompilationEngine:
     self.tokenizer.advance()
     varName = self.tokenizer.identifier()
     self.routineLevelST.define(varName, varType, SymbolTable.Kind.VAR)
+    nVars += 1
 
     self.tokenizer.advance()
 
@@ -251,8 +258,11 @@ class CompilationEngine:
       self.tokenizer.advance()
       varName = self.tokenizer.identifier()
       self.routineLevelST.define(varName, varType, SymbolTable.Kind.VAR)
+      nVars += 1
 
       self.tokenizer.advance()
+
+    return nVars
 
     # ';'
     
@@ -311,6 +321,7 @@ class CompilationEngine:
       self.vmWriter.writePush(VMWriter.Segment.TEMP, 0)
       self.vmWriter.writePop(VMWriter.Segment.THAT, 0)
     else:
+      pdb.set_trace()
       varProperties = self.findVariable(varName)
       if not varProperties.empty():
         self.vmWriter.writePop(varKindToSegment(varProperties.kind), varProperties.index)
@@ -318,6 +329,8 @@ class CompilationEngine:
 
   def compileIf(self):
     # 'if'
+    localIfStatementIndex = self.ifStatementIndex
+    self.ifStatementIndex += 1
 
     self.tokenizer.advance()
     # '('
@@ -329,17 +342,18 @@ class CompilationEngine:
     self.tokenizer.advance()
 
     self.vmWriter.writeArithmetic(VMWriter.Command.NOT)
-    self.vmWriter.writeIf("IF_LABEL_1"+"_"+self.className+"_"+str(self.ifStatementIndex))
+    self.vmWriter.writeIf("IF_LABEL_1"+"_"+self.className+"_"+str(localIfStatementIndex))
     # '{'
 
+    pdb.set_trace()
     self.tokenizer.advance()
     self.compileStatements()
     # '}'
 
     self.tokenizer.advance()
 
-    self.vmWriter.writeGoto("IF_LABEL_2"+"_"+self.className+"_"+str(self.ifStatementIndex))
-    self.vmWriter.writeLabel("IF_LABEL_1"+"_"+self.className+"_"+str(self.ifStatementIndex))
+    self.vmWriter.writeGoto("IF_LABEL_2"+"_"+self.className+"_"+str(localIfStatementIndex))
+    self.vmWriter.writeLabel("IF_LABEL_1"+"_"+self.className+"_"+str(localIfStatementIndex))
 
     if self.tokenizer.keyword() == "else":
       # 'else'
@@ -353,8 +367,7 @@ class CompilationEngine:
 
       self.tokenizer.advance()
 
-    self.vmWriter.writeLabel("IF_LABEL_2"+"_"+self.className+"_"+str(self.ifStatementIndex))
-    self.ifStatementIndex += 1
+    self.vmWriter.writeLabel("IF_LABEL_2"+"_"+self.className+"_"+str(localIfStatementIndex))
 
 
   def compileWhile(self):
@@ -427,7 +440,7 @@ class CompilationEngine:
   def compileExpression(self):
     self.compileTerm()
 
-    while self.tokenizer.symbol() in ["+", "-", "*", "/", "&", "|", "<", ">"]:
+    while self.tokenizer.symbol() in ["+", "-", "*", "/", "&", "|", "<", ">", "="]:
       operator = self.tokenizer.symbol()
       self.tokenizer.advance()
       self.compileTerm()
@@ -456,7 +469,7 @@ class CompilationEngine:
       if self.tokenizer.keyword() == "true":
         self.vmWriter.writePush(VMWriter.Segment.CONSTANT, str(1))
         self.vmWriter.writeArithmetic(VMWriter.Command.NEG)
-      elif self.tokenizer.keyword() in ["false, null"]:
+      elif self.tokenizer.keyword() in ["false", "null"]:
         self.vmWriter.writePush(VMWriter.Segment.CONSTANT, str(0))
       elif self.tokenizer.keyword() == "this":
         self.vmWriter.writePush(VMWriter.Segment.ARGUMENT, str(0)) # 'this' in routine
