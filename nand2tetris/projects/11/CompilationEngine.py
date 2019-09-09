@@ -56,6 +56,7 @@ class CompilationEngine:
     self.routineLevelST = SymbolTable.SymbolTable()
     self.ifStatementIndex = 0
     self.whileStatementIndex = 0
+    self.fieldCount = 0
     self.currentSubroutineDecType = SubroutineType.NONE
     self.currentSubroutineDecName = ""
     self.currentSubroutineDecReturnsVoid = False
@@ -119,12 +120,17 @@ class CompilationEngine:
 
     self.tokenizer.advance()
 
+    if varKind == SymbolTable.Kind.FIELD:
+      self.fieldCount += 1
+
     while self.tokenizer.symbol() == ',':
       self.tokenizer.advance() 
       # varName
       varName = self.tokenizer.identifier()
       self.classLevelST.define(varName, varType, varKind) # add var declaration to class level ST
       self.tokenizer.advance()
+      if varKind == SymbolTable.Kind.FIELD:
+        self.fieldCount += 1
 
     # ';'
 
@@ -222,7 +228,7 @@ class CompilationEngine:
     self.vmWriter.writeFunction(self.className+"."+self.currentSubroutineDecName, nLocals)
 
     if self.currentSubroutineDecType == SubroutineType.CTOR:
-      self.vmWriter.writePush(VMWriter.Segment.NONE, nParams)
+      self.vmWriter.writePush(VMWriter.Segment.CONSTANT, self.fieldCount)
       self.vmWriter.writeCall("Memory.alloc", 1)
       self.vmWriter.writePop(VMWriter.Segment.POINTER, 0)
     elif self.currentSubroutineDecType == SubroutineType.METHOD:
@@ -295,7 +301,7 @@ class CompilationEngine:
     if self.tokenizer.symbol() == "[":
       arrayAccess = True
 
-      self.vmWriter.writePush(VMWriter.Segment.NONE, varName)
+      self.vmWriter.writePush(VMWriter.Segment.CONSTANT, varName)
 
       # '['
       self.tokenizer.advance()
@@ -372,13 +378,15 @@ class CompilationEngine:
 
   def compileWhile(self):
     # 'while'
+    localWhileStatementIndex = self.whileStatementIndex
+    self.whileStatementIndex += 1
 
     self.tokenizer.advance()
     # '('
 
     self.tokenizer.advance()
 
-    self.vmWriter.writeLabel("WHILE_LABEL_1"+"_"+self.className+"_"+str(self.whileStatementIndex))
+    self.vmWriter.writeLabel("WHILE_LABEL_1"+"_"+self.className+"_"+str(localWhileStatementIndex))
 
     self.compileExpression()
 
@@ -390,17 +398,15 @@ class CompilationEngine:
     self.tokenizer.advance()
 
     self.vmWriter.writeArithmetic(VMWriter.Command.NOT)
-    self.vmWriter.writeIf("WHILE_LABEL_2"+"_"+self.className+"_"+str(self.whileStatementIndex))
+    self.vmWriter.writeIf("WHILE_LABEL_2"+"_"+self.className+"_"+str(localWhileStatementIndex))
 
     self.compileStatements()
     # '}'
 
     self.tokenizer.advance()
 
-    self.vmWriter.writeGoto("WHILE_LABEL_1"+"_"+self.className+"_"+str(self.whileStatementIndex))
-    self.vmWriter.writeLabel("WHILE_LABEL_2"+"_"+self.className+"_"+str(self.whileStatementIndex))
-
-    self.whileStatementIndex += 1
+    self.vmWriter.writeGoto("WHILE_LABEL_1"+"_"+self.className+"_"+str(localWhileStatementIndex))
+    self.vmWriter.writeLabel("WHILE_LABEL_2"+"_"+self.className+"_"+str(localWhileStatementIndex))
 
 
   def compileDo(self):
@@ -429,9 +435,7 @@ class CompilationEngine:
 
     self.tokenizer.advance()
 
-    if self.currentSubroutineDecType == SubroutineType.CTOR:
-      self.vmWriter.writePush(VMWriter.Segment.POINTER, 0) # returns this
-    elif self.currentSubroutineDecReturnsVoid:
+    if self.currentSubroutineDecReturnsVoid:
       self.vmWriter.writePush(VMWriter.Segment.CONSTANT, 0) # ignore return value for void
 
     self.vmWriter.writeReturn()
@@ -472,7 +476,7 @@ class CompilationEngine:
       elif self.tokenizer.keyword() in ["false", "null"]:
         self.vmWriter.writePush(VMWriter.Segment.CONSTANT, str(0))
       elif self.tokenizer.keyword() == "this":
-        self.vmWriter.writePush(VMWriter.Segment.ARGUMENT, str(0)) # 'this' in routine
+        self.vmWriter.writePush(VMWriter.Segment.POINTER, str(0)) # 'this' in routine
       self.tokenizer.advance()
 
     elif self.tokenizer.identifier(): # varName
@@ -519,6 +523,7 @@ class CompilationEngine:
 
       elif self.tokenizer.symbol() == '(': # assume private method call
         routineName = identifier
+        self.vmWriter.writePush(VMWriter.Segment.POINTER, 0) # push implicit 'this' object as 0th argument
         # '('
         self.tokenizer.advance()
         nArgs = self.compileExpressionList()
@@ -562,7 +567,7 @@ class CompilationEngine:
       self.tokenizer.advance()
       
       if not varProperties.empty(): # varName.subroutineName
-        routineName = varProperties.typeOf(identifier)+"."+self.tokenizer.identifier()
+        routineName = varProperties.varType+"."+self.tokenizer.identifier()
       else: # ctor 
         routineName = identifier+"."+self.tokenizer.identifier()
 
@@ -571,10 +576,12 @@ class CompilationEngine:
     else:
       routineName = self.className+"."+identifier # straight subroutine call with no '.' assume private method call
       methodCall = True
+      self.vmWriter.writePush(VMWriter.Segment.POINTER, 0) # push implicit 'this' object as 0th argument
       
     # '('
 
     self.tokenizer.advance()
+
    
     nArgs = self.compileExpressionList()
     if methodCall:
