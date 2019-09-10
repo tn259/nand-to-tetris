@@ -241,7 +241,7 @@ class CompilationEngine:
 
 
   def compileVarDec(self):
-    pdb.set_trace()
+    #pdb.set_trace()
 
     nVars = 0
 
@@ -301,7 +301,9 @@ class CompilationEngine:
     if self.tokenizer.symbol() == "[":
       arrayAccess = True
 
-      self.vmWriter.writePush(VMWriter.Segment.CONSTANT, varName)
+      varProperties = self.findVariable(varName)
+      if not varProperties.empty():
+        self.vmWriter.writePush(varKindToSegment(varProperties.kind), varProperties.index)
 
       # '['
       self.tokenizer.advance()
@@ -327,7 +329,7 @@ class CompilationEngine:
       self.vmWriter.writePush(VMWriter.Segment.TEMP, 0)
       self.vmWriter.writePop(VMWriter.Segment.THAT, 0)
     else:
-      pdb.set_trace()
+      #pdb.set_trace()
       varProperties = self.findVariable(varName)
       if not varProperties.empty():
         self.vmWriter.writePop(varKindToSegment(varProperties.kind), varProperties.index)
@@ -351,7 +353,7 @@ class CompilationEngine:
     self.vmWriter.writeIf("IF_LABEL_1"+"_"+self.className+"_"+str(localIfStatementIndex))
     # '{'
 
-    pdb.set_trace()
+    #pdb.set_trace()
     self.tokenizer.advance()
     self.compileStatements()
     # '}'
@@ -464,9 +466,15 @@ class CompilationEngine:
 
     elif self.tokenizer.stringVal(): # string const
       string = self.tokenizer.stringVal()
-      self.vmWriter.writeCall("String.new", str(len(string)))
+      self.vmWriter.writePush(VMWriter.Segment.CONSTANT, len(string))
+      self.vmWriter.writeCall("String.new", 1)
+      self.vmWriter.writePop(VMWriter.Segment.TEMP, 1)
       for c in string:
-        self.vmWriter.writeCall("String.appendChar", str(ord(c))) 
+        self.vmWriter.writePush(VMWriter.Segment.TEMP, 1)
+        self.vmWriter.writePush(VMWriter.Segment.CONSTANT, ord(c))
+        self.vmWriter.writeCall("String.appendChar", 2)
+        self.vmWriter.writePop(VMWriter.Segment.TEMP, 1)
+      self.vmWriter.writePush(VMWriter.Segment.TEMP, 1)
       self.tokenizer.advance()
 
     elif self.tokenizer.keyword() in ["true", "false", "null", "this"]: # keyword const

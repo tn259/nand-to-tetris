@@ -9,7 +9,10 @@ class Segment(Enum):
   THAT = 5
   POINTER = 6
   TEMP = 7
-  NONE = 8
+  R13 = 8
+  R14 = 9
+  R15 = 10
+  NONE = 11
 
 class Command(Enum):
   ADD = 0
