@@ -1,0 +1,98 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/12/Memory.jack
+
+/**
+ * This library provides two services: direct access to the computer's main
+ * memory (RAM), and allocation and recycling of memory blocks. The Hack RAM
+ * consists of 32,768 words, each holding a 16-bit binary number.
+ */ 
+class Memory {
+
+    static Array freeList;
+    static int nextIdx;
+    static int lengthIdx;
+    static int startIdx;
+
+    /** Initializes the class. */
+    function void init() {
+      let nextIdx = 0;
+      let lengthIdx = 1;
+      let startIdx = 0;
+      let freeList = 2048;
+      let freeList[nextIdx] = 0; // next
+      let freeList[lengthIdx] = 14344; // length
+      return;
+    }
+
+    /** Returns the RAM value at the given address. */
+    function int peek(int address) {
+      var Array ram;
+      let ram = 0;
+      return ram[address];
+    }
+
+    /** Sets the RAM value at the given address to the given value. */
+    function void poke(int address, int value) {
+      var Array ram;
+      let ram = 0;
+      let ram[address] = value;
+      return;
+    }
+
+    /** Finds an available RAM block of the given size and returns
+     *  a reference to its base address. */
+    function int alloc(int size) {
+      var int blockSize, blockBaseAddr;
+      var Array allocated;
+      var bool emptyHeap;
+
+      let blockSize = size + 2;
+      let nextIdx = startIdx;
+      let lengthIdx = nextIdx + 1;
+      let emptyHeap = (freeList[0] = 0);
+
+      // not enough space but heap is empty
+      if ((emptyHeap = true) & (freeList[lengthIdx] < blockSize)) {
+        do Sys.error(6);
+        return -1;
+      }
+
+      // find first block big enough
+      while (((emptyHeap = true) | ~(freeList[nextIdx] = null)) & (freeList[lengthIdx] < blockSize)) {
+        let nextIdx = freeList[nextIdx];
+        let lengthIdx = nextIdx + 1;
+      }
+
+      // not enough space in the case where heap is not empty
+      if ((emptyHeap = false) & (freeList[nextIdx] = null)) {
+        do Sys.error(6); // sigabrt
+        return -1;
+      }
+
+      // there is enough space
+      if ((freeList[lengthIdx] = blockSize) | (freeList[lengthIdx] > blockSize)) {
+        let blockBaseAddr = lengthIdx + freeList[lengthIdx] + 1 - blockSize;
+        let freeList[lengthIdx] = freeList[lengthIdx] - blockSize;
+        let allocated = blockBaseAddr;
+        let allocated[1] = size;
+        return blockBaseAddr;
+      }
+
+      // should not come here
+      return -1;
+    }
+
+    /** De-allocates the given object (cast as an array) by making
+     *  it available for future allocations. */
+    function void deAlloc(Array o) {
+      let nextIdx = startIdx;
+      let lengthIdx = nextIdx + 1;
+      while(~(freeList[nextIdx] = null)) {
+        let nextIdx = freeList[nextIdx];
+      }
+      let freeList[nextIdx] = o;
+      return;
+    }    
+}
