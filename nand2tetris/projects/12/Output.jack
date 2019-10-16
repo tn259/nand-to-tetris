@@ -27,8 +27,10 @@ class Output {
     function void init() {
       var int i, p;
 
+      do Output.initMap();
+
       do Screen.init();
-      do Screen.drawRectangle(0, 0, 8, 11); // cursor start position
+      do Screen.drawRectangle(0, 0, 7, 10); // cursor start position
 
       let pow2 = Array.new(8);
       let i = 0;
@@ -206,13 +208,13 @@ class Output {
       do Screen.setColor(false);
       let currentPixelI = Math.multiply(cursorI, 11);
       let currentPixelJ = Math.multiply(cursorJ, 8);
-      do Screen.drawRectangle(currentPixelJ, currentPixelI, currentPixelJ+8, currentPixelI+11);
+      do Screen.drawRectangle(currentPixelJ, currentPixelI, currentPixelJ+7, currentPixelI+10);
 
       // new
       do Screen.setColor(true);
-      let newPixelI = Math.mult(i, 11);
-      let newPixelJ = Math.mult(j, 8);
-      do Screen.drawRectangle(newPixelJ, newPixelI, newPixelJ+8, newPixelI+11);
+      let newPixelI = Math.multiply(i, 11);
+      let newPixelJ = Math.multiply(j, 8);
+      do Screen.drawRectangle(newPixelJ, newPixelI, newPixelJ+7, newPixelI+10);
       let cursorI = i;
       let cursorJ = j;
       return;
@@ -224,10 +226,23 @@ class Output {
        var Array map;
        var int idxI, idxJ;
        var int currentPixelI, currentPixelJ;
+       var int prevCursorI, prevCursorJ;
+
+       let prevCursorI = cursorI;
+       let prevCursorJ = cursorJ;
+
+       if ((cursorJ < CURSOR_MAX_J)) {
+         do Output.moveCursor(cursorI, cursorJ+1);
+       }
+       else {
+         if (cursorI < CURSOR_MAX_I) {
+           do Output.moveCursor(cursorI+1, 0);
+         }
+       }
 
        let map = Output.getMap(c);
-       let currentPixelI = Math.mult(cursorI, 11);
-       let currentPixelJ = Math.mult(cursorJ, 8);       
+       let currentPixelI = Math.multiply(prevCursorI, 11);
+       let currentPixelJ = Math.multiply(prevCursorJ, 8);       
 
        let idxI = 0;
        let idxJ = 0;
@@ -242,14 +257,6 @@ class Output {
          let idxI = idxI + 1;
        }
 
-       if ((cursorJ < CURSOR_MAX_J)) {
-         do Output.moveCursor(cursorI, cursorJ+1);
-       }
-       else {
-         if (cursorI < CURSOR_MAX_I) {
-           do Output.moveCursor(cursorI+1, 0);
-         }
-       }
        return; 
     }
 
@@ -269,25 +276,12 @@ class Output {
     /** Displays the given integer starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printInt(int i) {
-      var int singleDigitI, idiv10;
-      var char intAscii;
-      var Array map;
+      var String s;
+
+      let s = String.new(16);
+      do s.setInt(i);
  
-      if (i = 0) {
-        let intAscii = i;
-        //do Output.printChar(intAscii);
-        do Output.printChar(i);
-      }
-      else {
-        while (i > 0) {
-          let idiv10 = Math.divide(i, 10);
-          let singleDigitI = i - Math.multiply(idiv10, 10);
-          let intAscii = singleDigitI;
-          //do Output.printChar(intAscii);
-          do Output.printChar(i);
-          let i = idiv10;
-        }
-      }
+      do Output.printString(s);
 
       return;
     }
