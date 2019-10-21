@@ -205,7 +205,7 @@ class Screen {
       var int dy, dx;
 
       if (r > 181) {
-        do System.error(6);
+        do Sys.error(6);
         return;
       }
 
